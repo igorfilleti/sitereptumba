@@ -11,7 +11,7 @@ import { criarEstampa } from './estampa.js';
 
 const MOBILE = Math.min(screen.width, screen.height) < 600;
 const RELEVO = 20;                                // força do alto-relevo dos bordados
-const LUZ = { ambiente: .5, principal: 1.75 };   // calibrada: vermelho ≈ rgb(215,35,40), branco ≈ 230 de frente
+const LUZ = { ambiente: .5, principal: 1.25 };  // calibrada: vermelho ≈ rgb(220,10,20), branco ≈ 235 de frente, sem estourar
 const IMAGENS = { escudo: 'escudo.png', rep: 'rep.png', unicamp: 'unicamp.png', icone: 'icone.png' };
 
 /* sombra suave no "chão" */
@@ -32,9 +32,11 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
   catch (e) { throw new Error('WebGL indisponível'); }
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, MOBILE ? 1.75 : 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  // luz de estúdio neutra e calibrada: o lado virado para a câmera mostra a cor da arte
-  // sem estourar (sem tone mapping, que desbota o vermelho, e sem luzes coloridas)
-  renderer.toneMapping = THREE.NoToneMapping;
+  // luz de estúdio neutra e calibrada: o lado virado para a câmera mostra a cor da arte. O Neutral
+  // Tone Mapping só segura os realces (topo dos ombros e do peito, sob o holofote), sem estourar o branco
+  // nem desbotar o vermelho; os tons médios ficam praticamente iguais
+  renderer.toneMapping = THREE.NeutralToneMapping;
+  renderer.toneMappingExposure = 1.05;
 
   const scene = new THREE.Scene();
   const pmrem = new THREE.PMREMGenerator(renderer);
@@ -42,9 +44,18 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
   scene.environmentIntensity = LUZ.ambiente;
 
   const camera = new THREE.PerspectiveCamera(30, 1, .05, 20);
-  // a luz principal acompanha a câmera (de cima e um pouco à esquerda), como numa foto de produto
-  const key = new THREE.DirectionalLight(0xffffff, LUZ.principal); key.position.set(-.45, .55, 1);
-  camera.add(key); camera.add(key.target); key.target.position.set(0, 0, -1);
+  // holofote preso à câmera (no alto e um pouco à esquerda), sempre apontado para a camisa: ilumina o
+  // que está de frente para a tela e deixa sombras suaves onde ele não alcança (dobras, mangas, gola).
+  // Sem queda com a distância (decay 0): a frente recebe a mesma luz de antes, com as cores calibradas.
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  const holofote = new THREE.SpotLight(0xffffff, LUZ.principal, 0, Math.PI / 5, .6, 0);
+  holofote.position.set(-1, 1.25, 0);
+  holofote.castShadow = true;
+  holofote.shadow.mapSize.set(MOBILE ? 1024 : 2048, MOBILE ? 1024 : 2048);
+  holofote.shadow.camera.near = .3; holofote.shadow.camera.far = 8;
+  holofote.shadow.bias = -.0004; holofote.shadow.normalBias = .012;
+  camera.add(holofote); scene.add(holofote.target);
   scene.add(camera);
   camera.position.set(0, .12, 2.6);
 
@@ -80,6 +91,7 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
     m.material.bumpScale = RELEVO;
     m.material.roughnessMap = forno.rugosidade;       // a borracha do "icone" é mais lisa que o tecido
     camisa = new THREE.Mesh(m.geo, m.material);
+    camisa.castShadow = camisa.receiveShadow = true;    // a camisa faz sombra nela mesma (mangas, dobras)
     camisa.position.y = -m.ext.L / 2;
     const pivo = new THREE.Group(); pivo.add(camisa); grupo.add(pivo);
     camisa = pivo;
@@ -186,6 +198,7 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
     zoom += (zoomAlvo - zoom) * Math.min(1, dt * 8);
     if (zoomAlvo >= .98) alvoFoco.lerp(centro, Math.min(1, dt * 6));   // no zoom inicial (ou mais longe) sempre centralizada
     controls.target.lerp(alvoFoco, Math.min(1, dt * 8));              // centro da camisa, ou o ponto do zoom
+    holofote.target.position.copy(controls.target);
     offset.copy(camera.position).sub(controls.target);
     sph.setFromVector3(offset);
     sph.radius = distBase * zoom;
