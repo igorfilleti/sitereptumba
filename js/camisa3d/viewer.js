@@ -163,5 +163,6 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
     if (!pronto) { pronto = true; onPronto(); }
   });
 
+  if (new URLSearchParams(location.search).has('debug')) window.__camisa = { camera, controls, scene, renderer };   // inspeção no console
   return { setModel, setText, showSide, stopSpin };
 }

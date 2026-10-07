@@ -39,7 +39,16 @@ export const peca = (u, v) => (v < .056 ? 'gola' : v < .28 ? 'manga' : u < .5 ? 
 /* O modelo original tem gola redonda; a arte pede gola V.
    Puxa a gola e o alto da frente para baixo até formar o V,
    comprimindo o peito suavemente (o resto da malha fica intacto). */
-export const GOLA_V = { meia: .088, fundo: .62, base: .5, faixa: .009 };   // faixa: preto extra abaixo da gola
+// Gola em U suave: o preto termina onde acaba o vermelho dos ombros e tem 2 cm de espessura.
+// A peça da gola do modelo aparece com ~0,65 cm de frente (inclina para trás); o resto (extra)
+// é pintado na frente, logo abaixo dela.
+const GOLA_ESPESSURA = .02, GOLA_PECA = .0065;
+export const GOLA_V = {
+  meia: .088, base: .5, curva: 1.7,                // curva > 1 arredonda o fundo (1 = V reto)
+  extra: GOLA_ESPESSURA - GOLA_PECA,
+  fundo: DESIGN.ombro * DESIGN.faixa + GOLA_ESPESSURA - GOLA_PECA   // borda de baixo da peça da gola
+};
+const perfilGola = t => Math.pow(t, GOLA_V.curva);   // 0 no centro, 1 na lateral do decote
 function golaV(geo) {
   const p = geo.attributes.position, uv = geo.attributes.uv, { meia, fundo, base } = GOLA_V;
   // decote original da frente: altura máxima da frente por faixa de 1 cm em x
@@ -54,7 +63,7 @@ function golaV(geo) {
   const bordaY = (N(-meia) + N(meia)) / 2;
   const desce = x => {                                        // quanto o decote desce em x (≤ 0)
     const a = Math.abs(x); if (a >= meia) return 0;
-    return Math.min(0, fundo + (bordaY - fundo) * a / meia - N(x));
+    return Math.min(0, fundo + (bordaY - fundo) * perfilGola(a / meia) - N(x));
   };
   const suave = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
   for (let i = 0; i < p.count; i++) {
@@ -144,7 +153,8 @@ const FS = `
 uniform sampler2D tFrente, tCostas, tManga;
 uniform vec3 uExt; uniform float uFaixa, uOmbro;
 uniform vec3 uManga;   // fim do punho, da branca e da vermelha (fração da manga, a partir do punho)
-uniform vec4 uGolaV;   // meia largura, fundo, borda, faixa
+uniform vec4 uGolaV;   // meia largura, fundo, borda, preto extra
+uniform float uCurva;
 uniform vec3 cBranco, cVermelho, cPreto;
 varying vec3 vP; varying vec2 vUv; varying float vDm;
 vec4 adesivo(sampler2D t, vec2 c) { return (c.x < 0. || c.x > 1. || c.y < 0. || c.y > 1.) ? vec4(0.) : texture2D(t, c); }
@@ -162,8 +172,11 @@ void main() {
   }
   vec4 a = vec4(0.);
   bool frente = !gola && !manga && vUv.x < .5;
-  float vn = uGolaV.y + (uGolaV.z - uGolaV.y) * abs(vP.x) / uGolaV.x;   // linha do V
-  bool golaFrente = frente && abs(vP.x) < uGolaV.x && vP.y > vn - uGolaV.w;
+  // linha do decote em U e faixa preta com espessura constante (medida perpendicular à linha)
+  float tg = min(abs(vP.x) / uGolaV.x, 1.), dh = uGolaV.z - uGolaV.y;
+  float vn = uGolaV.y + dh * pow(tg, uCurva);
+  float incl = dh * uCurva * pow(max(tg, 1e-4), uCurva - 1.) / uGolaV.x;
+  bool golaFrente = frente && abs(vP.x) < uGolaV.x && vP.y > vn - uGolaV.w * sqrt(1. + incl * incl);
   if (gola || golaFrente) c = cPreto;
   else if (manga) { if (vUv.x > .38 && vUv.x < .76) a = adesivo(tManga, vec2((uExt.z - vP.z) / (2. * uExt.z), vP.y / uExt.y)); }
   else if (vUv.x < .5) a = adesivo(tFrente, vec2((vP.x + uExt.x) / (2. * uExt.x), vP.y / uExt.y));
@@ -192,7 +205,7 @@ export function criarForno(renderer, geo, ext, telas, tamanho = 2048) {
     uniforms: {
       tFrente: { value: tex.frente }, tCostas: { value: tex.costas }, tManga: { value: tex.manga },
       uExt: { value: new THREE.Vector3(ext.X, ext.L, ext.Z) }, uFaixa: { value: DESIGN.faixa }, uOmbro: { value: DESIGN.ombro * DESIGN.faixa },
-      uGolaV: { value: new THREE.Vector4(GOLA_V.meia, GOLA_V.fundo, GOLA_V.borda, GOLA_V.faixa) },
+      uGolaV: { value: new THREE.Vector4(GOLA_V.meia, GOLA_V.fundo, GOLA_V.borda, GOLA_V.extra) }, uCurva: { value: GOLA_V.curva },
       uManga: { value: listrasManga() }, uDesloc: { value: new THREE.Vector2() },
       cBranco: { value: hex(COR.branco) }, cVermelho: { value: hex(COR.vermelho) }, cPreto: { value: hex(COR.preto) }
     }
