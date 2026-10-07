@@ -33,7 +33,6 @@ function trama() {
 const URL_MODELO = new URL('../../assets/models/camisa/scene.gltf', import.meta.url).href;
 const GIRO = -170 * Math.PI / 180;      // o arquivo vem girado; assim a frente fica para +z
 export const ALTURA = .74;              // comprimento do tamanho M de referência (m)
-const PUNHO_V = .105;                   // ~3 cm de punho: a barra da manga é dobrada e ocupa o início do molde
 
 export const peca = (u, v) => (v < .056 ? 'gola' : v < .28 ? 'manga' : u < .5 ? 'frente' : 'costas');
 
@@ -70,6 +69,33 @@ function golaV(geo) {
   GOLA_V.borda = bordaY;
 }
 
+/* Nas mangas as listras seguem a manga (paralelas ao punho), não o tronco.
+   As linhas de v constante do molde são paralelas à boca da manga, mas v não
+   cresce por igual ao longo dela; por isso cada vértice ganha a distância real
+   (em metros) até a boca, medida no eixo da manga: atributo "dManga". */
+function distanciaManga(geo) {
+  const p = geo.attributes.position, uv = geo.attributes.uv, d = new Float32Array(p.count);
+  const passo = .005;
+  for (const lado of [u => u < .38, u => u >= .38 && u < .76]) {
+    const idx = [];
+    for (let i = 0; i < p.count; i++) if (peca(uv.getX(i), uv.getY(i)) === 'manga' && lado(uv.getX(i))) idx.push(i);
+    const vMin = Math.min(...idx.map(i => uv.getY(i))), vMax = Math.max(...idx.map(i => uv.getY(i)));
+    const nb = Math.ceil((vMax - vMin) / passo) + 1, soma = Array.from({ length: nb }, () => [0, 0, 0, 0]);
+    for (const i of idx) { const s = soma[Math.floor((uv.getY(i) - vMin) / passo)]; s[0] += p.getX(i); s[1] += p.getY(i); s[2] += p.getZ(i); s[3]++; }
+    const centro = soma.map(s => (s[3] ? [s[0] / s[3], s[1] / s[3], s[2] / s[3]] : null));
+    const ini = centro.find(Boolean), fim = [...centro].reverse().find(Boolean);
+    const e = [fim[0] - ini[0], fim[1] - ini[1], fim[2] - ini[2]], l = Math.hypot(...e);
+    // distância de cada faixa de v até a boca, ao longo do eixo (sempre crescente)
+    let ult = 0;
+    const dist = centro.map(c => (ult = c ? Math.max(ult, ((c[0] - ini[0]) * e[0] + (c[1] - ini[1]) * e[1] + (c[2] - ini[2]) * e[2]) / l) : ult));
+    for (const i of idx) {
+      const f = (uv.getY(i) - vMin) / passo - .5, b = Math.max(0, Math.min(nb - 2, Math.floor(f))), t = Math.min(1, Math.max(0, f - b));
+      d[i] = dist[b] * (1 - t) + dist[b + 1] * t;
+    }
+  }
+  geo.setAttribute('dManga', new THREE.BufferAttribute(d, 1));
+}
+
 export async function carregarModelo() {
   const gltf = await new GLTFLoader().loadAsync(URL_MODELO);
   gltf.scene.updateMatrixWorld(true);
@@ -89,6 +115,7 @@ export async function carregarModelo() {
   const { max } = geo.boundingBox;
   const ext = { X: Math.max(max.x, -geo.boundingBox.min.x) + .005, Z: Math.max(max.z, -geo.boundingBox.min.z) + .005, L: ALTURA };
   golaV(geo);
+  distanciaManga(geo);
 
   const material = new THREE.MeshPhysicalMaterial({
     normalMap: trama(), normalScale: new THREE.Vector2(.18, .18),
@@ -105,30 +132,35 @@ export async function carregarModelo() {
 /* ---------- forno: pinta o design na textura, peça por peça ---------- */
 const VS = `
 uniform vec2 uDesloc;
-varying vec3 vP; varying vec2 vUv;
+attribute float dManga;
+varying vec3 vP; varying vec2 vUv; varying float vDm;
 void main() {
-  vP = position; vUv = uv;
+  vP = position; vUv = uv; vDm = dManga;
   gl_Position = vec4(uv.x * 2. - 1. + uDesloc.x, uv.y * 2. - 1. + uDesloc.y, 0., 1.);
 }`;
 const FS = `
 uniform sampler2D tFrente, tCostas, tManga;
-uniform vec3 uExt; uniform float uFaixa, uOmbro, uPunhoV;
+uniform vec3 uExt; uniform float uFaixa, uOmbro, uPunho;
 uniform vec4 uGolaV;   // meia largura, fundo, borda, faixa
 uniform vec3 cBranco, cVermelho, cPreto;
-varying vec3 vP; varying vec2 vUv;
+varying vec3 vP; varying vec2 vUv; varying float vDm;
 vec4 adesivo(sampler2D t, vec2 c) { return (c.x < 0. || c.x > 1. || c.y < 0. || c.y > 1.) ? vec4(0.) : texture2D(t, c); }
 void main() {
-  // listras horizontais (a da barra é vermelha), com borda suavizada
+  // tronco: listras horizontais (a da barra é vermelha), com borda suavizada
   float s = vP.y / (2. * uFaixa), w = max(fwidth(s), 1e-4);
   float verm = 1. - smoothstep(.25 - w, .25 + w, abs(fract(s) - .25));
   verm = max(verm, smoothstep(uOmbro - w * 2. * uFaixa, uOmbro + w * 2. * uFaixa, vP.y));   // ombros vermelhos
   vec3 c = mix(cBranco, cVermelho, verm);
   bool gola = vUv.y < .056, manga = !gola && vUv.y < .28;
+  if (manga) {   // manga: listras paralelas ao punho, começando por uma branca logo acima dele
+    float sm = (vDm - uPunho) / (2. * uFaixa), fm = fract(sm), wm = max(fwidth(sm), 1e-4);
+    c = mix(cBranco, cVermelho, smoothstep(.5 - wm, .5 + wm, fm) * (1. - smoothstep(1. - 2. * wm, 1., fm)));
+  }
   vec4 a = vec4(0.);
   bool frente = !gola && !manga && vUv.x < .5;
   float vn = uGolaV.y + (uGolaV.z - uGolaV.y) * abs(vP.x) / uGolaV.x;   // linha do V
   bool golaFrente = frente && abs(vP.x) < uGolaV.x && vP.y > vn - uGolaV.w;
-  if (gola || golaFrente || (manga && vUv.y < uPunhoV)) c = cPreto;
+  if (gola || golaFrente || (manga && vDm < uPunho)) c = cPreto;
   else if (manga) { if (vUv.x > .38 && vUv.x < .76) a = adesivo(tManga, vec2((uExt.z - vP.z) / (2. * uExt.z), vP.y / uExt.y)); }
   else if (vUv.x < .5) a = adesivo(tFrente, vec2((vP.x + uExt.x) / (2. * uExt.x), vP.y / uExt.y));
   else a = adesivo(tCostas, vec2((uExt.x - vP.x) / (2. * uExt.x), vP.y / uExt.y));
@@ -151,7 +183,7 @@ export function criarForno(renderer, geo, ext, telas, tamanho = 2048) {
       tFrente: { value: tex.frente }, tCostas: { value: tex.costas }, tManga: { value: tex.manga },
       uExt: { value: new THREE.Vector3(ext.X, ext.L, ext.Z) }, uFaixa: { value: DESIGN.faixa }, uOmbro: { value: DESIGN.ombro * DESIGN.faixa },
       uGolaV: { value: new THREE.Vector4(GOLA_V.meia, GOLA_V.fundo, GOLA_V.borda, GOLA_V.faixa) },
-      uPunhoV: { value: PUNHO_V }, uDesloc: { value: new THREE.Vector2() },
+      uPunho: { value: DESIGN.punho }, uDesloc: { value: new THREE.Vector2() },
       cBranco: { value: hex(COR.branco) }, cVermelho: { value: hex(COR.vermelho) }, cPreto: { value: hex(COR.preto) }
     }
   });
