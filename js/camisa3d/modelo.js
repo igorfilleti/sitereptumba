@@ -35,6 +35,41 @@ const GIRO = -170 * Math.PI / 180;      // o arquivo vem girado; assim a frente 
 export const ALTURA = .74;              // comprimento do tamanho M de referência (m)
 const PUNHO_V = .105;                   // ~3 cm de punho: a barra da manga é dobrada e ocupa o início do molde
 
+export const peca = (u, v) => (v < .056 ? 'gola' : v < .28 ? 'manga' : u < .5 ? 'frente' : 'costas');
+
+/* O modelo original tem gola redonda; a arte pede gola V.
+   Puxa a gola e o alto da frente para baixo até formar o V,
+   comprimindo o peito suavemente (o resto da malha fica intacto). */
+export const GOLA_V = { meia: .088, fundo: .62, base: .5, faixa: .009 };   // faixa: preto extra abaixo da gola
+function golaV(geo) {
+  const p = geo.attributes.position, uv = geo.attributes.uv, { meia, fundo, base } = GOLA_V;
+  // decote original da frente: altura máxima da frente por faixa de 1 cm em x
+  const passo = .01, n = Math.round(meia / passo) + 2, decote = new Array(2 * n + 1).fill(0);
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i);
+    if (peca(uv.getX(i), uv.getY(i)) === 'frente' && Math.abs(x) <= (n - .5) * passo) {
+      const b = Math.round(x / passo) + n; decote[b] = Math.max(decote[b], p.getY(i));
+    }
+  }
+  const N = x => { const f = x / passo + n, i = Math.max(0, Math.min(2 * n - 1, Math.floor(f))), t = f - i; return decote[i] * (1 - t) + decote[i + 1] * t; };
+  const bordaY = (N(-meia) + N(meia)) / 2;
+  const desce = x => {                                        // quanto o decote desce em x (≤ 0)
+    const a = Math.abs(x); if (a >= meia) return 0;
+    return Math.min(0, fundo + (bordaY - fundo) * a / meia - N(x));
+  };
+  const suave = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), y = p.getY(i), d = desce(x);
+    if (!d) continue;
+    const k = peca(uv.getX(i), uv.getY(i));
+    if (k === 'frente' && y > base) p.setY(i, y + d * Math.min(1, (y - base) / (N(x) - base)));
+    else if (k === 'gola') p.setY(i, y + d * suave(-.005, .03, p.getZ(i)));
+  }
+  p.needsUpdate = true;
+  geo.computeBoundingBox();
+  GOLA_V.borda = bordaY;
+}
+
 export async function carregarModelo() {
   const gltf = await new GLTFLoader().loadAsync(URL_MODELO);
   gltf.scene.updateMatrixWorld(true);
@@ -53,16 +88,16 @@ export async function carregarModelo() {
   geo.computeBoundingBox();
   const { max } = geo.boundingBox;
   const ext = { X: Math.max(max.x, -geo.boundingBox.min.x) + .005, Z: Math.max(max.z, -geo.boundingBox.min.z) + .005, L: ALTURA };
+  golaV(geo);
 
   const material = new THREE.MeshPhysicalMaterial({
     normalMap: trama(), normalScale: new THREE.Vector2(.18, .18),
-    roughness: .82, metalness: 0,
-    sheen: .25, sheenRoughness: .6, sheenColor: new THREE.Color(0xffffff),
+    roughness: .88, metalness: 0,
     side: THREE.DoubleSide
   });
-  // o avesso (visto pela gola e pelas mangas) fica mais escuro, como na sombra
+  // o avesso (visto pela gola e pelas mangas) é claro e levemente sombreado, como no tecido sublimado
   material.onBeforeCompile = sh => {
-    sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n if (!gl_FrontFacing) diffuseColor.rgb *= .62;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n if (!gl_FrontFacing) diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.86), .75) * .8;');
   };
   return { geo, material, ext };
 }
@@ -77,7 +112,8 @@ void main() {
 }`;
 const FS = `
 uniform sampler2D tFrente, tCostas, tManga;
-uniform vec3 uExt; uniform float uFaixa, uPunhoV;
+uniform vec3 uExt; uniform float uFaixa, uOmbro, uPunhoV;
+uniform vec4 uGolaV;   // meia largura, fundo, borda, faixa
 uniform vec3 cBranco, cVermelho, cPreto;
 varying vec3 vP; varying vec2 vUv;
 vec4 adesivo(sampler2D t, vec2 c) { return (c.x < 0. || c.x > 1. || c.y < 0. || c.y > 1.) ? vec4(0.) : texture2D(t, c); }
@@ -85,10 +121,14 @@ void main() {
   // listras horizontais (a da barra é vermelha), com borda suavizada
   float s = vP.y / (2. * uFaixa), w = max(fwidth(s), 1e-4);
   float verm = 1. - smoothstep(.25 - w, .25 + w, abs(fract(s) - .25));
+  verm = max(verm, smoothstep(uOmbro - w * 2. * uFaixa, uOmbro + w * 2. * uFaixa, vP.y));   // ombros vermelhos
   vec3 c = mix(cBranco, cVermelho, verm);
   bool gola = vUv.y < .056, manga = !gola && vUv.y < .28;
   vec4 a = vec4(0.);
-  if (gola || (manga && vUv.y < uPunhoV)) c = cPreto;
+  bool frente = !gola && !manga && vUv.x < .5;
+  float vn = uGolaV.y + (uGolaV.z - uGolaV.y) * abs(vP.x) / uGolaV.x;   // linha do V
+  bool golaFrente = frente && abs(vP.x) < uGolaV.x && vP.y > vn - uGolaV.w;
+  if (gola || golaFrente || (manga && vUv.y < uPunhoV)) c = cPreto;
   else if (manga) { if (vUv.x > .38 && vUv.x < .76) a = adesivo(tManga, vec2((uExt.z - vP.z) / (2. * uExt.z), vP.y / uExt.y)); }
   else if (vUv.x < .5) a = adesivo(tFrente, vec2((vP.x + uExt.x) / (2. * uExt.x), vP.y / uExt.y));
   else a = adesivo(tCostas, vec2((uExt.x - vP.x) / (2. * uExt.x), vP.y / uExt.y));
@@ -109,7 +149,8 @@ export function criarForno(renderer, geo, ext, telas, tamanho = 2048) {
     vertexShader: VS, fragmentShader: FS, side: THREE.DoubleSide, depthTest: false, depthWrite: false,
     uniforms: {
       tFrente: { value: tex.frente }, tCostas: { value: tex.costas }, tManga: { value: tex.manga },
-      uExt: { value: new THREE.Vector3(ext.X, ext.L, ext.Z) }, uFaixa: { value: DESIGN.faixa },
+      uExt: { value: new THREE.Vector3(ext.X, ext.L, ext.Z) }, uFaixa: { value: DESIGN.faixa }, uOmbro: { value: DESIGN.ombro * DESIGN.faixa },
+      uGolaV: { value: new THREE.Vector4(GOLA_V.meia, GOLA_V.fundo, GOLA_V.borda, GOLA_V.faixa) },
       uPunhoV: { value: PUNHO_V }, uDesloc: { value: new THREE.Vector2() },
       cBranco: { value: hex(COR.branco) }, cVermelho: { value: hex(COR.vermelho) }, cPreto: { value: hex(COR.preto) }
     }

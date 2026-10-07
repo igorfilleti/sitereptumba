@@ -10,6 +10,7 @@ import { carregarModelo, criarForno, ALTURA } from './modelo.js';
 import { criarEstampa } from './estampa.js';
 
 const MOBILE = Math.min(screen.width, screen.height) < 600;
+const LUZ = { ambiente: .5, principal: 1.75 };   // calibrada: vermelho ≈ rgb(215,35,40), branco ≈ 230 de frente
 const IMAGENS = { escudo: 'escudo.png', rep: 'rep.png', unicamp: 'unicamp.png', icone: 'icone.png' };
 
 /* sombra suave no "chão" */
@@ -30,19 +31,20 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
   catch (e) { throw new Error('WebGL indisponível'); }
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, MOBILE ? 1.75 : 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.NeutralToneMapping;
-  renderer.toneMappingExposure = .95;
+  // luz de estúdio neutra e calibrada: o lado virado para a câmera mostra a cor da arte
+  // sem estourar (sem tone mapping, que desbota o vermelho, e sem luzes coloridas)
+  renderer.toneMapping = THREE.NoToneMapping;
 
   const scene = new THREE.Scene();
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), .04).texture;
-  scene.environmentIntensity = .85;
-  const key = new THREE.DirectionalLight(0xfff4ea, 1.6); key.position.set(-1.2, 1.6, 2); scene.add(key);
-  const rim = new THREE.DirectionalLight(0xff2a36, .55); rim.position.set(2.2, .5, -.6); scene.add(rim);
-  const rim2 = rim.clone(); rim2.position.set(-2.2, .5, .6); scene.add(rim2);
-  const fundo = new THREE.DirectionalLight(0xffffff, .9); fundo.position.set(.8, 1.4, -2); scene.add(fundo);
+  scene.environmentIntensity = LUZ.ambiente;
 
   const camera = new THREE.PerspectiveCamera(30, 1, .05, 20);
+  // a luz principal acompanha a câmera (de cima e um pouco à esquerda), como numa foto de produto
+  const key = new THREE.DirectionalLight(0xffffff, LUZ.principal); key.position.set(-.45, .55, 1);
+  camera.add(key); camera.add(key.target); key.target.position.set(0, 0, -1);
+  scene.add(camera);
   camera.position.set(0, .12, 2.6);
 
   /* ---------- camisa ---------- */
@@ -130,7 +132,7 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
   const offset = new THREE.Vector3(), sph = new THREE.Spherical();
 
   renderer.setAnimationLoop(agora => {
-    const dt = Math.min(.05, (agora - ultimo) / 1000); ultimo = agora;
+    const dt = Math.min(.25, (agora - ultimo) / 1000); ultimo = agora;   // aceita quadros lentos sem travar as animações
     if (!visivel || !camisa) return;
 
     escala.lerp(escalaAlvo, Math.min(1, dt * 8));
