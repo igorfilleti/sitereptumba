@@ -219,7 +219,7 @@ void main() {
     float h = (!gola && !manga && vUv.x < .5) ? adesivo(tRelevo, vec2((vP.x + uExt.x) / (2. * uExt.x), vP.y / uExt.y)).r : 0.;
     gl_FragColor = vec4(vec3(h), 1.); return;
   }
-  c = mix(c, a.rgb, a.a);
+  c = c * (1. - a.a) + a.rgb;   // adesivo com alfa pré-multiplicado
   gl_FragColor = vec4(pow(c, vec3(2.2)), 1.);   // saída linear; o alvo sRGB codifica de volta
 }`;
 
@@ -237,7 +237,9 @@ export function criarForno(renderer, geo, ext, telas, tamanho = 2048) {
   alvo.texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
   const relevo = new THREE.WebGLRenderTarget(tamanho, tamanho, { generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter });
   const tex = {};
-  for (const [nome, cv] of Object.entries(telas)) { tex[nome] = new THREE.CanvasTexture(cv); tex[nome].minFilter = THREE.LinearFilter; tex[nome].generateMipmaps = false; }
+  // alfa pré-multiplicado: nas bordas dos adesivos a filtragem não mistura o "preto transparente" do canvas,
+  // então branco sobre listra branca funde no tecido, sem contorno cinza
+  for (const [nome, cv] of Object.entries(telas)) { tex[nome] = new THREE.CanvasTexture(cv); tex[nome].minFilter = THREE.LinearFilter; tex[nome].generateMipmaps = false; tex[nome].premultiplyAlpha = true; }
   const hex = h => new THREE.Color().setRGB(...[1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255), THREE.LinearSRGBColorSpace);
   const mat = new THREE.ShaderMaterial({
     vertexShader: VS, fragmentShader: FS, side: THREE.DoubleSide, depthTest: false, depthWrite: false,
