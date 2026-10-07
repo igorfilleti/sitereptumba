@@ -36,48 +36,47 @@ export const ALTURA = .74;              // comprimento do tamanho M de referênc
 
 export const peca = (u, v) => (v < .056 ? 'gola' : v < .28 ? 'manga' : u < .5 ? 'frente' : 'costas');
 
-/* O modelo original tem gola redonda; a arte pede gola V.
-   Puxa a gola e o alto da frente para baixo até formar o V,
-   comprimindo o peito suavemente (o resto da malha fica intacto). */
-// Gola em U suave: o preto termina onde acaba o vermelho dos ombros e tem 2 cm de espessura.
-// A peça da gola do modelo aparece com ~0,65 cm de frente (inclina para trás); o resto (extra)
-// é pintado na frente, logo abaixo dela.
-const GOLA_ESPESSURA = .02, GOLA_PECA = .0065;
+/* O modelo original tem gola redonda; a arte pede gola em U suave.
+   Puxa a gola e o alto da frente para baixo até formar o U (o peito comprime
+   suavemente) e estica a própria peça da gola até a espessura da camisa real,
+   convertida para a escala do modelo. O U termina onde acaba o vermelho dos ombros. */
+const GOLA_PECA_VISIVEL = .0091;   // espessura de frente por unidade de esticamento da peça da gola (medida na tela)
 export const GOLA_V = {
   meia: .088, base: .5, curva: 1.7,                // curva > 1 arredonda o fundo (1 = V reto)
-  extra: GOLA_ESPESSURA - GOLA_PECA,
-  fundo: DESIGN.ombro * DESIGN.faixa + GOLA_ESPESSURA - GOLA_PECA   // borda de baixo da peça da gola
+  fundo: DESIGN.ombro * DESIGN.faixa               // borda de baixo da gola = fim do vermelho dos ombros
 };
 const perfilGola = t => Math.pow(t, GOLA_V.curva);   // 0 no centro, 1 na lateral do decote
-function golaV(geo) {
+function golaV(geo, escalaReal) {
   const p = geo.attributes.position, uv = geo.attributes.uv, { meia, fundo, base } = GOLA_V;
-  // decote original da frente: altura máxima da frente por faixa de 1 cm em x
-  const passo = .01, n = Math.round(meia / passo) + 2, decote = new Array(2 * n + 1).fill(0);
+  const estica = DESIGN.gola.espessura * escalaReal / GOLA_PECA_VISIVEL;
+  // por faixa de 1 cm em x: topo original da frente e base original da gola (parte da frente)
+  const passo = .01, n = Math.round(meia / passo) + 2, decote = new Array(2 * n + 1).fill(0), baseGola = new Array(2 * n + 1).fill(9);
   for (let i = 0; i < p.count; i++) {
-    const x = p.getX(i);
-    if (peca(uv.getX(i), uv.getY(i)) === 'frente' && Math.abs(x) <= (n - .5) * passo) {
-      const b = Math.round(x / passo) + n; decote[b] = Math.max(decote[b], p.getY(i));
-    }
+    const x = p.getX(i), k = peca(uv.getX(i), uv.getY(i));
+    if (Math.abs(x) > (n - .5) * passo) continue;
+    const b = Math.round(x / passo) + n;
+    if (k === 'frente') decote[b] = Math.max(decote[b], p.getY(i));
+    else if (k === 'gola' && p.getZ(i) > 0) baseGola[b] = Math.min(baseGola[b], p.getY(i));
   }
-  const N = x => { const f = x / passo + n, i = Math.max(0, Math.min(2 * n - 1, Math.floor(f))), t = f - i; return decote[i] * (1 - t) + decote[i + 1] * t; };
+  const interp = arr => x => { const f = x / passo + n, i = Math.max(0, Math.min(2 * n - 1, Math.floor(f))), t = f - i; return arr[i] * (1 - t) + arr[i + 1] * t; };
+  const N = interp(decote), G = interp(baseGola);
   const bordaY = (N(-meia) + N(meia)) / 2;
-  const desce = x => {                                        // quanto o decote desce em x (≤ 0)
-    const a = Math.abs(x); if (a >= meia) return 0;
-    return Math.min(0, fundo + (bordaY - fundo) * perfilGola(a / meia) - N(x));
-  };
+  const alvo = x => fundo + (bordaY - fundo) * perfilGola(Math.min(1, Math.abs(x) / meia));   // nova linha do U
   const suave = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
   for (let i = 0; i < p.count; i++) {
-    const x = p.getX(i), y = p.getY(i), d = desce(x);
-    if (!d) continue;
-    const k = peca(uv.getX(i), uv.getY(i));
+    const x = p.getX(i), y = p.getY(i), a = Math.abs(x);
+    if (a >= meia) continue;
+    const k = peca(uv.getX(i), uv.getY(i)), d = Math.min(0, alvo(x) - N(x));
     if (k === 'frente' && y > base) p.setY(i, y + d * Math.min(1, (y - base) / (N(x) - base)));
-    else if (k === 'gola') p.setY(i, y + d * suave(-.005, .03, p.getZ(i)));
+    else if (k === 'gola') {
+      // a gola desce junto com o U e estica para cima a partir da base (some nas laterais e atrás)
+      const w = suave(-.005, .03, p.getZ(i)), s = 1 + (estica - 1) * w * (1 - suave(.6, 1, a / meia));
+      p.setY(i, y + (alvo(x) - G(x) + (y - G(x)) * (s - 1)) * w);
+    }
   }
   p.needsUpdate = true;
   geo.computeBoundingBox();
-  GOLA_V.borda = bordaY;
 }
-
 /* Nas mangas as listras seguem a manga (paralelas ao punho), não o tronco.
    As linhas de v constante do molde são paralelas à boca da manga, mas v não
    cresce por igual ao longo dela; por isso cada vértice ganha a distância real até a
@@ -125,8 +124,11 @@ export async function carregarModelo() {
   geo.computeBoundingBox();
   const { max } = geo.boundingBox;
   const ext = { X: Math.max(max.x, -geo.boundingBox.min.x) + .005, Z: Math.max(max.z, -geo.boundingBox.min.z) + .005, L: ALTURA };
-  golaV(geo);
   distanciaManga(geo);
+  // camisa real → modelo: a manga real mede DESIGN.real.manga; a do modelo, o que foi medido acima
+  const compManga = geo.userData.compManga.reduce((s, v) => s + v, 0) / geo.userData.compManga.length;
+  const escalaReal = compManga / DESIGN.real.manga;
+  golaV(geo, escalaReal);
 
   const material = new THREE.MeshPhysicalMaterial({
     normalMap: trama(), normalScale: new THREE.Vector2(.18, .18),
@@ -153,8 +155,6 @@ const FS = `
 uniform sampler2D tFrente, tCostas, tManga;
 uniform vec3 uExt; uniform float uFaixa, uOmbro;
 uniform vec3 uManga;   // fim do punho, da branca e da vermelha (fração da manga, a partir do punho)
-uniform vec4 uGolaV;   // meia largura, fundo, borda, preto extra
-uniform float uCurva;
 uniform vec3 cBranco, cVermelho, cPreto;
 varying vec3 vP; varying vec2 vUv; varying float vDm;
 vec4 adesivo(sampler2D t, vec2 c) { return (c.x < 0. || c.x > 1. || c.y < 0. || c.y > 1.) ? vec4(0.) : texture2D(t, c); }
@@ -171,13 +171,7 @@ void main() {
     c = mix(cPreto, c, smoothstep(uManga.x - wm, uManga.x + wm, vDm));
   }
   vec4 a = vec4(0.);
-  bool frente = !gola && !manga && vUv.x < .5;
-  // linha do decote em U e faixa preta com espessura constante (medida perpendicular à linha)
-  float tg = min(abs(vP.x) / uGolaV.x, 1.), dh = uGolaV.z - uGolaV.y;
-  float vn = uGolaV.y + dh * pow(tg, uCurva);
-  float incl = dh * uCurva * pow(max(tg, 1e-4), uCurva - 1.) / uGolaV.x;
-  bool golaFrente = frente && abs(vP.x) < uGolaV.x && vP.y > vn - uGolaV.w * sqrt(1. + incl * incl);
-  if (gola || golaFrente) c = cPreto;
+  if (gola) c = cPreto;
   else if (manga) { if (vUv.x > .38 && vUv.x < .76) a = adesivo(tManga, vec2((uExt.z - vP.z) / (2. * uExt.z), vP.y / uExt.y)); }
   else if (vUv.x < .5) a = adesivo(tFrente, vec2((vP.x + uExt.x) / (2. * uExt.x), vP.y / uExt.y));
   else a = adesivo(tCostas, vec2((uExt.x - vP.x) / (2. * uExt.x), vP.y / uExt.y));
@@ -205,7 +199,6 @@ export function criarForno(renderer, geo, ext, telas, tamanho = 2048) {
     uniforms: {
       tFrente: { value: tex.frente }, tCostas: { value: tex.costas }, tManga: { value: tex.manga },
       uExt: { value: new THREE.Vector3(ext.X, ext.L, ext.Z) }, uFaixa: { value: DESIGN.faixa }, uOmbro: { value: DESIGN.ombro * DESIGN.faixa },
-      uGolaV: { value: new THREE.Vector4(GOLA_V.meia, GOLA_V.fundo, GOLA_V.borda, GOLA_V.extra) }, uCurva: { value: GOLA_V.curva },
       uManga: { value: listrasManga() }, uDesloc: { value: new THREE.Vector2() },
       cBranco: { value: hex(COR.branco) }, cVermelho: { value: hex(COR.vermelho) }, cPreto: { value: hex(COR.preto) }
     }

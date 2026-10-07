@@ -10,6 +10,10 @@ const FONTE_NUM = '"Saira Extra Condensed","Saira Condensed","Arial Narrow",sans
 const FONTE_NOME = '"Saira Condensed","Saira Extra Condensed","Arial Narrow",sans-serif';
 
 export const DESIGN = {
+  // medidas da camisa real (na mão do cliente); o modelo 3D é menor e tudo que vem daqui
+  // é convertido pela proporção entre as mangas (real ÷ modelo)
+  real: { manga: .282 },                           // do ombro ao punho, no ponto mais longo
+  gola: { espessura: .02 },                        // faixa preta da gola, na camisa real
   faixa: .0525,                                    // altura de cada listra; a da barra é vermelha
   ombro: 12,                                       // da 12ª listra para cima é tudo vermelho (ombros e gola)
   frente: {
