@@ -119,12 +119,13 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
   document.querySelectorAll('[data-zoom]').forEach(b => b.addEventListener('click', () => {
     const antes = zoomAlvo;
     zoomPara(zoomAlvo * (b.dataset.zoom > 0 ? .82 : 1.22));
-    if (zoomAlvo > antes) alvoFoco.lerp(centro, Math.min(1, (zoomAlvo - antes) / Math.max(1e-3, 1 - antes)));   // afastando, recentraliza
+    if (zoomAlvo > antes) alvoFoco.sub(centro).multiplyScalar(antes < 1 ? Math.max(0, (1 - zoomAlvo) / (1 - antes)) : 0).add(centro);   // afastando, recentraliza
   }));
   // roda do mouse (e pinça do touchpad) sobre a camisa: zoom, sem rolar a página
   // aproximando, o ponto embaixo do cursor fica parado; afastando, volta a centralizar (centrada no zoom inicial)
   const raio = new THREE.Raycaster(), ndc = new THREE.Vector2(), plano = new THREE.Plane(), ponto = new THREE.Vector3();
   canvas.addEventListener('wheel', e => {
+    if (e.deltaY > 0 && zoomAlvo >= ZOOM.max - 1e-6) return;     // já toda afastada: a roda volta a rolar a página
     e.preventDefault();
     const antes = zoomAlvo;
     zoomPara(zoomAlvo * Math.exp(e.deltaY * (e.ctrlKey ? .01 : .0015)));
@@ -138,7 +139,8 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
       else { plano.setFromNormalAndCoplanarPoint(camera.getWorldDirection(ponto).negate(), alvoFoco); if (!raio.ray.intersectPlane(plano, ponto)) return; }
       alvoFoco.sub(ponto).multiplyScalar(zoomAlvo / antes).add(ponto);
     } else {
-      alvoFoco.lerp(centro, Math.min(1, (zoomAlvo - antes) / Math.max(1e-3, 1 - antes)));
+      // afastando: o deslocamento do foco encolhe na mesma proporção e some no zoom inicial
+      alvoFoco.sub(centro).multiplyScalar(antes < 1 ? Math.max(0, (1 - zoomAlvo) / (1 - antes)) : 0).add(centro);
     }
     if (modelo) alvoFoco.set(Math.max(-modelo.ext.X, Math.min(modelo.ext.X, alvoFoco.x)), Math.max(-modelo.ext.L / 2, Math.min(modelo.ext.L / 2, alvoFoco.y)), Math.max(-modelo.ext.Z, Math.min(modelo.ext.Z, alvoFoco.z)));
   }, { passive: false });
@@ -146,6 +148,7 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
   const botaoInicio = document.querySelector('[data-reset]');
   function visaoInicial() { controls.autoRotate = false; alvoAz = 0; zoomAlvo = 1; alvoFoco.copy(centro); }
   if (botaoInicio) botaoInicio.addEventListener('click', visaoInicial);
+  canvas.addEventListener('dblclick', visaoInicial);             // duplo clique na camisa também volta
   let alterada = false;
 
   /* ---------- tamanho do canvas e enquadramento ---------- */
@@ -180,6 +183,7 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
     chao.material.opacity = .5 - grupo.position.y * 6;
 
     zoom += (zoomAlvo - zoom) * Math.min(1, dt * 8);
+    if (zoomAlvo >= .98) alvoFoco.lerp(centro, Math.min(1, dt * 6));   // no zoom inicial (ou mais longe) sempre centralizada
     controls.target.lerp(alvoFoco, Math.min(1, dt * 8));              // centro da camisa, ou o ponto do zoom
     offset.copy(camera.position).sub(controls.target);
     sph.setFromVector3(offset);
