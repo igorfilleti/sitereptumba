@@ -83,7 +83,7 @@
         <div class="viewer" id="viewer">
           <canvas id="shirt3d" role="img" aria-label="Pré-visualização 3D da camisa"></canvas>
           <p class="nogl" id="viewerMsg">Carregando 3D…</p>
-          <p class="hint" id="hint">Arraste para girar</p>
+          <p class="hint" id="hint">Arraste para girar · role para zoom</p>
           <span class="badge" id="badge"></span>
           <div class="viewer-ui">
             <div class="pill" role="group" aria-label="Lado da camisa">
@@ -93,6 +93,7 @@
             <div class="pill zoom" role="group" aria-label="Zoom">
               <button type="button" data-zoom="-1" aria-label="Afastar">−</button>
               <button type="button" data-zoom="1" aria-label="Aproximar">+</button>
+              <button type="button" class="reset" data-reset tabindex="-1" aria-label="Voltar à visão inicial" title="Voltar à visão inicial"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4.5h4.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
             </div>
           </div>
         </div>

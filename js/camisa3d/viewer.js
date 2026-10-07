@@ -102,8 +102,11 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
     minPolarAngle: Math.PI / 2 - .5, maxPolarAngle: Math.PI / 2 + .25
   });
   let alvoAz = null, zoom = 1, zoomAlvo = 1, distBase = 2.6;
+  const ZOOM = { min: .35, max: 1.4 }, PHI0 = Math.PI / 2 - .08, centro = new THREE.Vector3();   // visão inicial: de frente, levemente de cima
   const hint = document.getElementById('hint');
-  controls.addEventListener('start', () => { controls.autoRotate = false; alvoAz = null; if (hint) hint.style.opacity = 0; });
+  const esconderDica = () => { if (hint) hint.style.opacity = 0; };
+  controls.addEventListener('start', () => { controls.autoRotate = false; alvoAz = null; esconderDica(); });
+  const zoomPara = z => { zoomAlvo = Math.max(ZOOM.min, Math.min(ZOOM.max, z)); controls.autoRotate = false; esconderDica(); };
 
   function showSide(lado) {
     controls.autoRotate = false;
@@ -112,9 +115,14 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
   }
   const stopSpin = () => { controls.autoRotate = false; };
   document.querySelectorAll('[data-side]').forEach(b => b.addEventListener('click', () => showSide(b.dataset.side)));
-  document.querySelectorAll('[data-zoom]').forEach(b => b.addEventListener('click', () => {
-    zoomAlvo = Math.max(.55, Math.min(1.3, zoomAlvo * (b.dataset.zoom > 0 ? .82 : 1.22)));
-  }));
+  document.querySelectorAll('[data-zoom]').forEach(b => b.addEventListener('click', () => zoomPara(zoomAlvo * (b.dataset.zoom > 0 ? .82 : 1.22))));
+  // roda do mouse (e pinça do touchpad) sobre a camisa: zoom, sem rolar a página
+  canvas.addEventListener('wheel', e => { e.preventDefault(); zoomPara(zoomAlvo * Math.exp(e.deltaY * (e.ctrlKey ? .01 : .0015))); }, { passive: false });
+  // voltar à visão inicial (botão discreto que só aparece quando a visão mudou)
+  const botaoInicio = document.querySelector('[data-reset]');
+  function visaoInicial() { controls.autoRotate = false; alvoAz = 0; zoomAlvo = 1; }
+  if (botaoInicio) botaoInicio.addEventListener('click', visaoInicial);
+  let alterada = false;
 
   /* ---------- tamanho do canvas e enquadramento ---------- */
   function ajustarCamera() {
@@ -148,13 +156,14 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
     chao.material.opacity = .5 - grupo.position.y * 6;
 
     zoom += (zoomAlvo - zoom) * Math.min(1, dt * 8);
+    controls.target.lerp(centro, Math.min(1, dt * 8));                // sempre centralizada na camisa
     offset.copy(camera.position).sub(controls.target);
     sph.setFromVector3(offset);
     sph.radius = distBase * zoom;
     if (alvoAz !== null) {
       const d = alvoAz - sph.theta;
       sph.theta += d * Math.min(1, dt * 6);
-      sph.phi += (Math.PI / 2 - .08 - sph.phi) * Math.min(1, dt * 6);
+      sph.phi += (PHI0 - sph.phi) * Math.min(1, dt * 6);
       if (Math.abs(d) < .002) alvoAz = null;
     }
     camera.position.copy(controls.target).add(offset.setFromSpherical(sph));
@@ -163,6 +172,8 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
 
     const az = controls.getAzimuthalAngle(), face = Math.abs(az) < Math.PI / 2 ? 'front' : 'back';
     if (face !== ultimaFace) { ultimaFace = face; botoes.forEach(b => b.classList.toggle('on', b.dataset.side === face)); }
+    const mudou = Math.abs(zoomAlvo - 1) > .03 || (alvoAz === null && !controls.autoRotate && (Math.abs(az) > .06 || Math.abs(sph.phi - PHI0) > .06));
+    if (mudou !== alterada && botaoInicio) { alterada = mudou; botaoInicio.classList.toggle('visivel', mudou); botaoInicio.tabIndex = mudou ? 0 : -1; }
     if (!pronto) { pronto = true; onPronto(); }
   });
 
