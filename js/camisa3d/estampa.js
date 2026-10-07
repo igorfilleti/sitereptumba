@@ -263,7 +263,9 @@ export function criarEstampa(resolucao = 1024) {
       // largura pela tinta do número (não pelo espaço da fonte), centralizado por ela
       gF.letterSpacing = '0px'; gF.font = `800 ${F.numero.alt * k / .72}px ${FONTE_NUM}`;
       const m = gF.measureText(num), tinta = (m.actualBoundingBoxLeft + m.actualBoundingBoxRight) / k;
-      quadro('frente', 0, yN, tinta + 2 * F.numero.margemReal * (ext.escalaReal || 1), lN.topo - lN.baixo);
+      // o quadro passa 2 mm para dentro das brancas de cima e de baixo: cobre a transição suavizada das
+      // listras e funde com o tecido (sem a linha fina fechando o quadrado)
+      quadro('frente', 0, yN, tinta + 2 * F.numero.margemReal * (ext.escalaReal || 1), lN.topo - lN.baixo + .004);
       const [Xc, Yc] = pos.frente(0, yN);
       gF.textAlign = 'left'; gF.textBaseline = 'alphabetic'; gF.fillStyle = COR.preto;
       gF.fillText(num, Xc - tinta * k / 2 + m.actualBoundingBoxLeft, Yc + (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2);
