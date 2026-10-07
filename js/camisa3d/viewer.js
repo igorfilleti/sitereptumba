@@ -194,9 +194,9 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
   // rápido e balança para a frente/trás ao inclinar; tudo assenta oscilando quando para
   // (rigidez: quão rápido volta; amortecimento: quanto oscila; ganho: quanto reage; max: limite)
   const MOLAS = {
-    torcao:   { rigidez: 28, amortecimento: 3.2, ganho: .09,  max: .32 },   // rad
-    abertura: { rigidez: 24, amortecimento: 3.6, ganho: .014, max: .045 },  // m
-    pendulo:  { rigidez: 22, amortecimento: 2.8, ganho: .09,  max: .06 }    // m
+    torcao:   { rigidez: 28, amortecimento: 3.2, ganho: .045, max: .16 },   // rad
+    abertura: { rigidez: 24, amortecimento: 3.6, ganho: .007, max: .0225 }, // m
+    pendulo:  { rigidez: 22, amortecimento: 2.8, ganho: .045, max: .03 }    // m
   };
   const estadoMola = { torcao: [0, 0], abertura: [0, 0], pendulo: [0, 0] };   // [posição, velocidade]
   const passoMola = (nome, alvo, dt) => {
