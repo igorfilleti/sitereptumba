@@ -9,14 +9,14 @@ export const MODELAGENS = {
   M: {
     ref: [52, 74],          // peitoral e comprimento (cm) do tamanho de referência
     meia: .26, L: .74, cava: .66, cintura: 1, ombro: .225,
-    gola: .085, decote: .03, decoteFrente: .075,
+    gola: .085, decote: .03,
     manga: { comp: .2, ang: 45, boca: .165 },
     raio: .065, listra: .106, escala: 1
   },
   F: {
     ref: [44, 60],
     meia: .22, L: .60, cava: .65, cintura: .88, ombro: .19,
-    gola: .075, decote: .028, decoteFrente: .08,
+    gola: .075, decote: .028,
     manga: { comp: .13, ang: 42, boca: .14 },
     raio: .055, listra: .088, escala: .88
   }

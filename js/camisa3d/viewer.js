@@ -10,7 +10,7 @@ import { construirCamisa, MODELAGENS } from './geometria.js';
 import { criarEstampa } from './estampa.js';
 
 const MOBILE = Math.min(screen.width, screen.height) < 600;
-const IMAGENS = { escudo: 'escudo.png', rep: 'rep.png', unicamp: 'unicamp.png' };
+const IMAGENS = { escudo: 'escudo.png', rep: 'rep.png', unicamp: 'unicamp.png', icone: 'icone.png' };
 
 /* trama do tecido dry-fit (mapa de normais gerado por código) */
 function trama() {
