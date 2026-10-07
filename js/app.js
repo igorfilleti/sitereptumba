@@ -115,12 +115,15 @@ const el = {
   camisaNome: $('#camisaNome'), camisaNumero: $('#camisaNumero'),
   file: $('#comprovante')
 };
+/* número da camisa: algarismos, letras (com acento) e alguns símbolos, até 4 caracteres, sem espaço */
+const NUMERO_FORA = /[^\p{L}\p{N}!?&#*+\-.\/']/gu;
+const NUMERO_OK = /^[\p{L}\p{N}!?&#*+\-.\/']{1,4}$/u;
 const RULES = {
   nome: v => (v.trim().split(/\s+/).length >= 2 && v.trim().length >= 5) || 'Informe nome e sobrenome.',
   apelido: v => v.trim().length >= 2 || 'Informe seu apelido.',
   celular: v => v.replace(/\D/g, '').length === 11 || 'Informe o celular com DDD (11 dígitos).',
   camisaNome: v => v.trim().length >= 1 || 'Digite o nome que vai nas costas.',
-  camisaNumero: v => /^\d{1,4}$/.test(v) || 'Digite o número (1 a 4 dígitos).'
+  camisaNumero: v => NUMERO_OK.test(v) || 'Digite o número ou letras (1 a 4 caracteres).'
 };
 function setMsg(field, msg) {
   field.classList.toggle('invalid', !!msg);
@@ -168,7 +171,7 @@ el.celular.addEventListener('input', () => {
 function syncShirtText() {
   const n = el.camisaNome.value.toUpperCase().replace(/[^\p{L} .'\-]/gu, '').replace(/\s{2,}/g, ' ').slice(0, 12);
   if (n !== el.camisaNome.value) el.camisaNome.value = n;
-  const num = el.camisaNumero.value.replace(/\D/g, '').slice(0, 4);
+  const num = el.camisaNumero.value.toUpperCase().replace(NUMERO_FORA, '').slice(0, 4);
   if (num !== el.camisaNumero.value) el.camisaNumero.value = num;
   state.nome = n.trim(); state.numero = num;
   const cN = $('#cNome'), cU = $('#cNum');

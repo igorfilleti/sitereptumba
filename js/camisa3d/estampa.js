@@ -214,7 +214,7 @@ export function criarEstampa(resolucao = 1024) {
           const passos = raio ? 24 : 1;
           for (let a = 0; a < passos; a++) for (const r of raio ? [raio, raio * .5] : [0]) {
             g.save(); g.translate(X0 + Math.cos(a / passos * 2 * Math.PI) * r, Y0 + Math.sin(a / passos * 2 * Math.PI) * r);
-            g.scale(sx * k, sy * k); g.font = `800 100px ${FONTE_NUM_COSTAS}`; g.fillText(d.c, d.esq, d.sobe); g.restore();
+            g.scale(sx * k, sy * k); g.font = `800 100px ${FONTE_NUM_COSTAS}`; g.fillText(d.c, d.esq, m0.actualBoundingBoxAscent); g.restore();   // todos na linha de base do 0 (letras e símbolos alinham com os números)
           }
           x -= d.larg * sx + gap;
         }
