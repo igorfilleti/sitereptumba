@@ -1,12 +1,13 @@
 /* =====================================================================
    CAMISA 3D — visualizador com three.js
    Luz de estúdio (HDRI), modelo 3D real com o design assado na textura,
-   giro com inércia e transição animada entre frente e costas.
+   giro com inércia, pano com balanço leve (mola) e transição animada entre frente e costas.
+   Só desenha quando algo muda (girar, zoom, digitar, pano balançando): parada, não gasta nada.
    ===================================================================== */
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { carregarModelo, criarForno, ALTURA } from './modelo.js';
+import { carregarModelo, criarForno, ALTURA, BALANCO } from './modelo.js';
 import { criarEstampa } from './estampa.js';
 
 const MOBILE = Math.min(screen.width, screen.height) < 600;
@@ -68,20 +69,25 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
   const escala = new THREE.Vector3(1, 1, 1), escalaAlvo = new THREE.Vector3(1, 1, 1);
   const REF = [52, ALTURA * 100];                               // o modelo é um M masculino (52 × 74 cm)
 
-  function redesenhar() {
+  let sujo = true;                                              // pede um novo quadro
+  // completo = false: só nome/número mudaram (a parte fixa da estampa e os mapas são reaproveitados)
+  function redesenhar(completo = true) {
     if (!forno) return;
-    estampa.desenhar(modelo.ext, img, texto);
-    forno.assar();
+    forno.assar(estampa.desenhar(modelo.ext, img, texto, completo));
+    sujo = true;
   }
-  let rq = 0;
-  const pedirDesenho = () => { if (!rq) rq = requestAnimationFrame(() => { rq = 0; redesenhar(); }); };
+  let rq = 0, pedidoCompleto = false;
+  const pedirDesenho = (completo = true) => {
+    pedidoCompleto ||= completo;
+    if (!rq) rq = requestAnimationFrame(() => { rq = 0; const c = pedidoCompleto; pedidoCompleto = false; redesenhar(c); });
+  };
 
   for (const [k, arq] of Object.entries(IMAGENS)) {
     const im = new Image();
     im.onload = () => { img[k] = im; pedirDesenho(); };
     im.src = new URL(`../../assets/img/${arq}`, import.meta.url).href;
   }
-  if (document.fonts) for (const f of [`800 80px "Saira Extra Condensed"`, `700 80px "Rajdhani"`, `800 80px "Saira Condensed"`]) document.fonts.load(f).then(pedirDesenho, () => {});
+  if (document.fonts) for (const f of [`800 80px "Saira Extra Condensed"`, `700 80px "Rajdhani"`, `800 80px "Saira Condensed"`]) document.fonts.load(f).then(() => pedirDesenho(false), () => {});
 
   carregarModelo().then(m => {
     modelo = m;
@@ -92,6 +98,7 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
     m.material.roughnessMap = forno.rugosidade;       // a borracha do "icone" é mais lisa que o tecido
     camisa = new THREE.Mesh(m.geo, m.material);
     camisa.castShadow = camisa.receiveShadow = true;    // a camisa faz sombra nela mesma (mangas, dobras)
+    camisa.customDepthMaterial = m.profundidade;        // a sombra acompanha o balanço do pano
     camisa.position.y = -m.ext.L / 2;
     const pivo = new THREE.Group(); pivo.add(camisa); grupo.add(pivo);
     camisa = pivo;
@@ -104,8 +111,9 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
     if (camisa && g !== setModel.g) escala.multiplyScalar(.95);  // pequeno "respiro" ao trocar a modelagem
     setModel.g = g;
     escalaAlvo.copy(novo);
+    sujo = true;
   }
-  function setText(nome, numero) { texto = { nome, numero }; pedirDesenho(); }
+  function setText(nome, numero) { texto = { nome, numero }; pedirDesenho(false); }
   /* ---------- controles ---------- */
   const controls = new OrbitControls(camera, canvas);
   canvas.style.touchAction = 'pan-y';                          // deixa rolar a página no celular
@@ -173,52 +181,77 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
     const t = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
     const meiaAlt = modelo.ext.L / 2 * 1.22, meiaLarg = modelo.ext.X * 1.18;
     distBase = Math.max(meiaAlt / t, meiaLarg / (t * camera.aspect)) + .15;
+    sujo = true;
   }
   new ResizeObserver(ajustarCamera).observe(canvas);
 
   /* ---------- loop ---------- */
   let visivel = true, ultimo = performance.now(), ultimaFace = '', pronto = false;
-  new IntersectionObserver(es => { visivel = es[0].isIntersecting; }).observe(canvas);
+  new IntersectionObserver(es => { visivel = es[0].isIntersecting; sujo = true; }).observe(canvas);
   const botoes = [...document.querySelectorAll('[data-side]')];
   const offset = new THREE.Vector3(), sph = new THREE.Spherical();
+  // mola do pano: a barra e as mangas ficam para trás quando a camisa gira e assentam ao parar
+  const MOLA = { rigidez: 55, amortecimento: 5.5, arrasto: .035, max: .08 };
+  let torcao = 0, velTorcao = 0, azAnterior = null, giroAuto = 0;
+  chao.material.opacity = .5;
 
   renderer.setAnimationLoop(agora => {
     const dt = Math.min(.25, (agora - ultimo) / 1000); ultimo = agora;   // aceita quadros lentos sem travar as animações
     if (!visivel || !camisa) return;
 
+    // giro automático só na primeira volta; depois para de frente
+    const az = controls.getAzimuthalAngle();
+    let dAz = azAnterior === null ? 0 : az - azAnterior;
+    if (dAz > Math.PI) dAz -= 2 * Math.PI; else if (dAz < -Math.PI) dAz += 2 * Math.PI;
+    azAnterior = az;
+    if (controls.autoRotate && (giroAuto += Math.abs(dAz)) > 2 * Math.PI) { controls.autoRotate = false; alvoAz = 0; }
+
+    // mola: alvo proporcional à velocidade do giro; a torção persegue o alvo e oscila até assentar
+    // (a câmera girando equivale à camisa girando ao contrário: a barra fica para trás no sentido da câmera)
+    const alvo = Math.max(-MOLA.max, Math.min(MOLA.max, dAz / Math.max(dt, 1e-3) * MOLA.arrasto));
+    velTorcao += ((alvo - torcao) * MOLA.rigidez - velTorcao * MOLA.amortecimento) * dt;
+    torcao += velTorcao * dt;
+    const molaAtiva = Math.abs(torcao) > 2e-4 || Math.abs(velTorcao) > 2e-3;
+    if (!molaAtiva) { torcao = 0; velTorcao = 0; }
+    BALANCO.uTorcao.value = torcao;
+    BALANCO.uTempo.value = agora / 1000;
+
+    const escalaMudando = escala.distanceToSquared(escalaAlvo) > 1e-8;
     escala.lerp(escalaAlvo, Math.min(1, dt * 8));
     camisa.scale.copy(escala);
-    const t = agora / 1000;
-    grupo.position.y = Math.sin(t * 1.3) * .008;
-    grupo.rotation.z = Math.sin(t * .8) * .01;
     chao.position.y = -modelo.ext.L / 2 * escala.y - .05;
     chao.scale.set(modelo.ext.X * 1.9 * escala.x, .3, 1);
-    chao.material.opacity = .5 - grupo.position.y * 6;
 
+    const zoomMudando = Math.abs(zoomAlvo - zoom) > 1e-4;
     zoom += (zoomAlvo - zoom) * Math.min(1, dt * 8);
     if (zoomAlvo >= .98) alvoFoco.lerp(centro, Math.min(1, dt * 6));   // no zoom inicial (ou mais longe) sempre centralizada
+    const focoMudando = controls.target.distanceToSquared(alvoFoco) > 1e-9;
     controls.target.lerp(alvoFoco, Math.min(1, dt * 8));              // centro da camisa, ou o ponto do zoom
     holofote.target.position.copy(controls.target);
     offset.copy(camera.position).sub(controls.target);
     sph.setFromVector3(offset);
     sph.radius = distBase * zoom;
-    if (alvoAz !== null) {
+    const virando = alvoAz !== null;
+    if (virando) {
       const d = alvoAz - sph.theta;
       sph.theta += d * Math.min(1, dt * 6);
       sph.phi += (PHI0 - sph.phi) * Math.min(1, dt * 6);
       if (Math.abs(d) < .002) alvoAz = null;
     }
     camera.position.copy(controls.target).add(offset.setFromSpherical(sph));
-    controls.update(dt);
+    const controlesMudaram = controls.update(dt);
+
+    // só desenha quando algo mudou; parada, a cena não gasta nada
+    if (!(sujo || controlesMudaram || molaAtiva || escalaMudando || zoomMudando || focoMudando || virando || controls.autoRotate)) return;
+    sujo = false;
     renderer.render(scene, camera);
 
-    const az = controls.getAzimuthalAngle(), face = Math.abs(az) < Math.PI / 2 ? 'front' : 'back';
+    const face = Math.abs(az) < Math.PI / 2 ? 'front' : 'back';
     if (face !== ultimaFace) { ultimaFace = face; botoes.forEach(b => b.classList.toggle('on', b.dataset.side === face)); }
     const mudou = Math.abs(zoomAlvo - 1) > .03 || alvoFoco.lengthSq() > 1e-4 || (alvoAz === null && !controls.autoRotate && (Math.abs(az) > .06 || Math.abs(sph.phi - PHI0) > .06));
     if (mudou !== alterada && botaoInicio) { alterada = mudou; botaoInicio.classList.toggle('visivel', mudou); botaoInicio.tabIndex = mudou ? 0 : -1; }
     if (!pronto) { pronto = true; onPronto(); }
   });
-
-  if (new URLSearchParams(location.search).has('debug')) window.__camisa = { camera, controls, scene, renderer };   // inspeção no console
+  if (new URLSearchParams(location.search).has('debug')) window.__camisa = { camera, controls, scene, renderer, quadros: () => renderer.info.render.frame, redesenhar };   // inspeção no console
   return { setModel, setText, showSide, stopSpin };
 }

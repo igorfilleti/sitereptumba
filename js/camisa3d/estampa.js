@@ -132,20 +132,30 @@ export function criarEstampa(resolucao = 1024) {
   // relevo: mapa de altura da frente (bordados), em tons de cinza; brilho: rugosidade da frente
   // (branco = tecido normal; mais escuro = mais liso, como a borracha do "icone")
   const telas = { frente: tela(), costas: tela(), manga: tela(), relevo: tela(), brilho: tela() };
+  // parte fixa da frente e das costas (logos, escudo): desenhada uma vez e reaproveitada a cada tecla
+  const fixas = { frente: tela(), costas: tela() };
+  let fixasProntas = false;
 
-  /* ext = { X, Z, L }: meia largura, meia profundidade e altura do modelo (m) */
-  function desenhar(ext, img, texto) {
+  /* ext = { X, Z, L }: meia largura, meia profundidade e altura do modelo (m).
+     completo = true refaz também a parte fixa (imagens, mapas de relevo e brilho); devolve se refez. */
+  function desenhar(ext, img, texto, completo = true) {
     const { X, Z, L } = ext, lim = ext.listras;
     const listra = (cor, n) => listraDeCima(lim, L, cor, n);
     const k = resolucao / (2 * X), MW = ext.manga ? ext.manga.W : .2, MH = ext.manga ? ext.manga.H : .2, km = resolucao / 2 / MW;
     const preparar = (c, w, h) => { if (c.width !== w || c.height !== h) { c.width = w; c.height = h; } const g = c.getContext('2d'); g.clearRect(0, 0, w, h); return g; };
-    const gF = preparar(telas.frente, resolucao, Math.round(L * k));
-    const gC = preparar(telas.costas, resolucao, Math.round(L * k));
-    const gM = preparar(telas.manga, resolucao / 2, Math.round(MH * km));   // no molde da manga; centro = lado de fora, na divisa vermelha/branca
-    const gR = preparar(telas.relevo, resolucao, Math.round(L * k));
-    gR.fillStyle = '#000'; gR.fillRect(0, 0, telas.relevo.width, telas.relevo.height);
-    const gB = preparar(telas.brilho, resolucao, Math.round(L * k));
-    gB.fillStyle = '#fff'; gB.fillRect(0, 0, telas.brilho.width, telas.brilho.height);
+    const H = Math.round(L * k), refazer = completo || !fixasProntas || fixas.frente.height !== H;
+    const gF = preparar(telas.frente, resolucao, H);
+    const gC = preparar(telas.costas, resolucao, H);
+    let gFx, gCx, gM, gR, gB;                                   // só existem quando a parte fixa é refeita
+    if (refazer) {
+      gFx = preparar(fixas.frente, resolucao, H);
+      gCx = preparar(fixas.costas, resolucao, H);
+      gM = preparar(telas.manga, resolucao / 2, Math.round(MH * km));   // no molde da manga; centro = lado de fora, na divisa vermelha/branca
+      gR = preparar(telas.relevo, resolucao, H);
+      gR.fillStyle = '#000'; gR.fillRect(0, 0, telas.relevo.width, telas.relevo.height);
+      gB = preparar(telas.brilho, resolucao, H);
+      gB.fillStyle = '#fff'; gB.fillRect(0, 0, telas.brilho.width, telas.brilho.height);
+    }
     const pos = { frente: (x, y) => [(x + X) * k, (L - y) * k], costas: (x, y) => [(X - x) * k, (L - y) * k] };
     const ctxDe = { frente: gF, costas: gC };
 
@@ -254,8 +264,10 @@ export function criarEstampa(resolucao = 1024) {
     const num = texto.numero || '10', nome = (texto.nome || 'JOGADOR').toUpperCase();
     const F = DESIGN.frente, B = DESIGN.costas;
 
-    // frente: "icone" no peito direito, escudo no esquerdo, número num quadro branco sobre a listra vermelha
-    imagem(gF, img.icone, ...pos.frente(F.icone.x, listra('vermelha', F.icone.listra).meio), F.icone.larg * k);
+    // ----- parte fixa (só quando refazer) -----
+    if (refazer) {
+    // frente: "icone" no peito direito, escudo no esquerdo
+    imagem(gFx, img.icone, ...pos.frente(F.icone.x, listra('vermelha', F.icone.listra).meio), F.icone.larg * k);
     // "icone" é emborrachado: sobe do tecido um pouco mais que o bordado do escudo, com bordas
     // bem definidas, e é mais liso que o tecido (leve brilho de borracha)
     if (img.icone) {
@@ -271,31 +283,14 @@ export function criarEstampa(resolucao = 1024) {
       const { baseEstrelas } = partesEscudo(img.escudo), altEscudo = largEscudo * img.escudo.naturalHeight / img.escudo.naturalWidth;
       subir = Math.max(0, lE.topo + .004 - (lE.meio + (CIRCULO_ESCUDO.cy - baseEstrelas) * altEscudo)) * k;
     }
-    escudoBordado(gF, gR, img.escudo, ...pos.frente(F.escudo.x, lE.meio), largEscudo * k, F.escudo.bordaReal * (ext.escalaReal || 1) * k, subir);
-    const lN = listra('vermelha', F.numero.listra), yN = lN.meio;
-    {
-      // largura pela tinta do número (não pelo espaço da fonte), centralizado por ela
-      gF.letterSpacing = '0px'; gF.font = `800 ${F.numero.alt * k / .72}px ${FONTE_NUM}`;
-      const m = gF.measureText(num), tinta = (m.actualBoundingBoxLeft + m.actualBoundingBoxRight) / k;
-      // o quadro passa 2 mm para dentro das brancas de cima e de baixo: cobre a transição suavizada das
-      // listras e funde com o tecido (sem a linha fina fechando o quadrado)
-      quadro('frente', 0, yN, tinta + 2 * F.numero.margemReal * (ext.escalaReal || 1), lN.topo - lN.baixo + .004);
-      const [Xc, Yc] = pos.frente(0, yN);
-      gF.textAlign = 'left'; gF.textBaseline = 'alphabetic'; gF.fillStyle = COR.preto;
-      gF.fillText(num, Xc - tinta * k / 2 + m.actualBoundingBoxLeft, Yc + (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2);
-    }
-
-    // costas: nome e "Rep. Tumba" centralizados em listras brancas, número grande com borda branca
-    nomeFixo(nome, listra('branca', B.nome.listra).meio);
-    numeroCostas(num, naListra(B.numero.inicio), naListra(B.numero.fim));
+    escudoBordado(gFx, gR, img.escudo, ...pos.frente(F.escudo.x, lE.meio), largEscudo * k, F.escudo.bordaReal * (ext.escalaReal || 1) * k, subir);
     if (img.rep) {
       const lR = listra('branca', DESIGN.listras.brancas + 1 - B.rep.brancaDeBaixo), hB = lR.topo - lR.baixo;
       const tinta = hB * (1 - 2 * B.rep.margemReal / DESIGN.listras.branca);         // do topo do R/T à perninha do p
       const hImg = tinta / (REP_TINTA.fim - REP_TINTA.inicio), wImg = hImg * img.rep.naturalWidth / img.rep.naturalHeight;
       const meioImg = lR.meio + ((REP_TINTA.inicio + REP_TINTA.fim) / 2 - .5) * hImg;    // centro da tinta no meio da listra
-      imagem(gC, img.rep, ...pos.costas(0, meioImg), wImg * k);
+      imagem(gCx, img.rep, ...pos.costas(0, meioImg), wImg * k);
     }
-
     // manga esquerda: símbolo e texto da Unicamp separados, com contorno branco fino, alinhados às listras
     if (img.unicamp) {
       const im0 = () => ({ w: img.unicamp.naturalWidth, h: img.unicamp.naturalHeight });
@@ -316,7 +311,30 @@ export function criarEstampa(resolucao = 1024) {
       peca(0, UNICAMP_SIMBOLO_FIM, U.simbolo.largReal / vermReal, (U.simbolo.acimaDaDivisa - .5) * altSimbolo);
       peca(UNICAMP_TEXTO_INICIO, 1, U.texto.largReal / vermReal, U.texto.centro);
     }
-    return telas;
+    fixasProntas = true;
+    }
+
+    // ----- a cada tecla: parte fixa pronta + nome e número -----
+    gF.drawImage(fixas.frente, 0, 0);
+    gC.drawImage(fixas.costas, 0, 0);
+    // frente: número num quadro branco sobre a listra vermelha
+    const lN = listra('vermelha', F.numero.listra), yN = lN.meio;
+    {
+      // largura pela tinta do número (não pelo espaço da fonte), centralizado por ela
+      gF.letterSpacing = '0px'; gF.font = `800 ${F.numero.alt * k / .72}px ${FONTE_NUM}`;
+      const m = gF.measureText(num), tinta = (m.actualBoundingBoxLeft + m.actualBoundingBoxRight) / k;
+      // o quadro passa 2 mm para dentro das brancas de cima e de baixo: cobre a transição suavizada das
+      // listras e funde com o tecido (sem a linha fina fechando o quadrado)
+      quadro('frente', 0, yN, tinta + 2 * F.numero.margemReal * (ext.escalaReal || 1), lN.topo - lN.baixo + .004);
+      const [Xc, Yc] = pos.frente(0, yN);
+      gF.textAlign = 'left'; gF.textBaseline = 'alphabetic'; gF.fillStyle = COR.preto;
+      gF.fillText(num, Xc - tinta * k / 2 + m.actualBoundingBoxLeft, Yc + (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2);
+    }
+
+    // costas: nome e "Rep. Tumba" centralizados em listras brancas, número grande com borda branca
+    nomeFixo(nome, listra('branca', B.nome.listra).meio);
+    numeroCostas(num, naListra(B.numero.inicio), naListra(B.numero.fim));
+    return refazer;
   }
   return { telas, desenhar };
 }

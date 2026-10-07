@@ -30,7 +30,8 @@ function trama() {
   return t;
 }
 
-const URL_MODELO = new URL('../../assets/models/camisa/scene.gltf', import.meta.url).href;
+// camisa.gltf: só a camisa, compactada (normais em 8 bits, molde e índices em 16 bits: KHR_mesh_quantization)
+const URL_MODELO = new URL('../../assets/models/camisa/camisa.gltf', import.meta.url).href;
 const GIRO = -170 * Math.PI / 180;      // o arquivo vem girado; assim a frente fica para +z
 export const ALTURA = .74;              // comprimento do tamanho M de referência (m)
 
@@ -171,10 +172,42 @@ export async function carregarModelo() {
     side: THREE.DoubleSide
   });
   // o avesso (visto pela gola e pelas mangas) é claro e levemente sombreado, como no tecido sublimado
+  pesosBalanco(geo, ext);
   material.onBeforeCompile = sh => {
+    balancoNoShader(sh);
     sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n if (!gl_FrontFacing) diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.86), .75) * .8;');
   };
-  return { geo, material, ext };
+  // a sombra usa a mesma deformação do balanço
+  const profundidade = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
+  profundidade.onBeforeCompile = balancoNoShader;
+  return { geo, material, profundidade, ext };
+}
+
+/* ---------- física leve do pano (mola) ----------
+   Não é simulação de tecido (pesada demais para o site): cada ponto tem um peso de balanço
+   (0 = preso nos ombros e na gola; 1 = barra) e, na placa de vídeo, gira um pouco em volta do eixo
+   da camisa, com uma leve ondulação. O ângulo (uTorcao) vem de uma mola calculada no viewer. */
+export const BALANCO = { uTorcao: { value: 0 }, uTempo: { value: 0 } };
+function pesosBalanco(geo, ext) {
+  const p = geo.attributes.position, uv = geo.attributes.uv, dm = geo.attributes.dManga, w = new Float32Array(p.count);
+  const suave = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  for (let i = 0; i < p.count; i++) {
+    const k = peca(uv.getX(i), uv.getY(i));
+    if (k === 'gola') w[i] = 0;
+    else if (k === 'manga') w[i] = .6 * Math.pow(1 - dm.getX(i), 1.5);              // a boca da manga balança mais
+    else w[i] = Math.pow(1 - suave(0, ext.L * .8, p.getY(i)), 1.6);                    // do peito (preso) à barra (solta)
+  }
+  geo.setAttribute('aBalanco', new THREE.BufferAttribute(w, 1));
+}
+function balancoNoShader(sh) {
+  sh.uniforms.uTorcao = BALANCO.uTorcao; sh.uniforms.uTempo = BALANCO.uTempo;
+  sh.vertexShader = `attribute float aBalanco;
+uniform float uTorcao, uTempo;
+float anguloBalanco(vec3 p) { return uTorcao * aBalanco * (1. + .35 * sin(p.y * 14. - uTempo * 5. + p.x * 5.)); }
+vec2 girarBalanco(vec2 v, float a) { float c = cos(a), s = sin(a); return vec2(c * v.x + s * v.y, -s * v.x + c * v.y); }
+` + sh.vertexShader
+    .replace('#include <beginnormal_vertex>', '#include <beginnormal_vertex>\n objectNormal.xz = girarBalanco(objectNormal.xz, anguloBalanco(position));')
+    .replace('#include <begin_vertex>', '#include <begin_vertex>\n transformed.xz = girarBalanco(transformed.xz, anguloBalanco(position));');
 }
 
 /* ---------- forno: pinta o design na textura, peça por peça ---------- */
@@ -264,11 +297,13 @@ export function criarForno(renderer, geo, ext, telas, tamanho = 2048) {
   for (const r of [3, 1.5]) for (let i = 0; i < 8; i++) { const t = i / 8 * Math.PI * 2; passos.push([Math.cos(t) * r * 2 / tamanho, Math.sin(t) * r * 2 / tamanho]); }
   passos.push([0, 0]);
 
-  function assar() {
-    for (const t of Object.values(tex)) t.needsUpdate = true;
+  // completo = false (ao digitar): só a frente e as costas mudaram; refaz apenas a textura de cor
+  function assar(completo = true) {
+    for (const [nome, t] of Object.entries(tex)) if (completo || nome === 'frente' || nome === 'costas') t.needsUpdate = true;
     const antes = renderer.getRenderTarget(), autoClear = renderer.autoClear;
     renderer.autoClear = false;
-    for (const [modo, rt, fundo] of [[0, alvo, 0xffffff], [1, relevo, 0x000000], [2, rugosidade, 0xffffff]]) {
+    const passadas = [[0, alvo, 0xffffff], [1, relevo, 0x000000], [2, rugosidade, 0xffffff]];
+    for (const [modo, rt, fundo] of completo ? passadas : passadas.slice(0, 1)) {
       mat.uniforms.uModo.value = modo;
       renderer.setRenderTarget(rt); renderer.setClearColor(fundo, 1); renderer.clear();
       for (const [x, y] of passos) { mat.uniforms.uDesloc.value.set(x, y); renderer.render(cena, cam); }

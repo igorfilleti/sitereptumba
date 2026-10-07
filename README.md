@@ -32,7 +32,7 @@ js/camisa3d/            camisa 3D (three.js)
   estampa.js            design (arte da Icone): posições de logos, nome e número
 js/vendor/qrcode.js     gerador de QR Code (MIT)
 assets/img/             escudo, "Rep. Tumba", Unicamp e "icone"
-assets/models/camisa/   modelo 3D da camisa (glTF)
+assets/models/camisa/   modelo 3D da camisa (camisa.gltf, compactado: KHR_mesh_quantization)
 servidor.ps1            servidor local para testes
 ```
 
@@ -40,4 +40,4 @@ servidor.ps1            servidor local para testes
 
 Modelo 3D baseado em ["FC Porto Shirt"](https://sketchfab.com/3d-models/fc-porto-shirt-132d995c35f1480889ff544734ca86cf)
 de [Carlos.Maciel](https://sketchfab.com/Carlos.Maciel), licença
-[CC BY 4.0](http://creativecommons.org/licenses/by/4.0/). Modificado: textura, relevo e arte originais removidos.
+[CC BY 4.0](http://creativecommons.org/licenses/by/4.0/). Modificado: textura, relevo, arte e objetos de cenário originais removidos; malha compactada.
