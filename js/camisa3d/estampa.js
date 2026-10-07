@@ -7,7 +7,9 @@
    ===================================================================== */
 export const COR = { branco: '#f5f5f3', vermelho: '#e3141c', preto: '#111111' };
 const FONTE_NUM = '"Saira Extra Condensed","Saira Condensed","Arial Narrow",sans-serif';
-const FONTE_NOME = '"Saira Condensed","Saira Extra Condensed","Arial Narrow",sans-serif';
+// nome: Rajdhani Bold, a mais próxima da camisa real (letras quadradas de cantos arredondados,
+// G com barra reta, A de topo reto, R de perna reta); livre para uso comercial (OFL, Google Fonts)
+const FONTE_NOME = '"Rajdhani","Saira Condensed","Arial Narrow",sans-serif';
 
 export const DESIGN = {
   // medidas da camisa real (na mão do cliente); o modelo 3D é menor e tudo que vem daqui
@@ -50,14 +52,16 @@ export function criarEstampa(resolucao = 1024) {
 
     const imagem = (g, im, X0, Y0, w) => { if (im) g.drawImage(im, X0 - w / 2, Y0 - w * im.height / im.width / 2, w, w * im.height / im.width); };
     const quadro = (lado, cx, cy, w, h) => { const [x0, y0] = pos[lado](lado === 'frente' ? cx - w / 2 : cx + w / 2, cy + h / 2); ctxDe[lado].fillStyle = COR.branco; ctxDe[lado].fillRect(x0, y0, w * k, h * k); };
-    const medir = (g, str, alt, fonte, peso) => { g.font = `${peso} ${alt * k / .72}px ${fonte}`; return g.measureText(str).width / k; };
-    const txt = (lado, str, x, y, alt, largMax, fonte, peso) => {
+    const medir = (g, str, alt, fonte, peso) => { g.letterSpacing = '0px'; g.font = `${peso} ${alt * k / .72}px ${fonte}`; return g.measureText(str).width / k; };
+    const txt = (lado, str, x, y, alt, largMax, fonte, peso, espaco = 0) => {   // espaco: entre letras, em em
       if (!str) return;
       const g = ctxDe[lado], [X0, Y0] = pos[lado](x, y);
       let fs = alt * k / .72;
+      g.letterSpacing = `0px`;
       g.font = `${peso} ${fs}px ${fonte}`;
       const w = g.measureText(str).width;
       if (w > largMax * k) { fs *= largMax * k / w; g.font = `${peso} ${fs}px ${fonte}`; }
+      g.letterSpacing = `${espaco * fs}px`;
       const mt = g.measureText(str), off = (mt.actualBoundingBoxAscent - mt.actualBoundingBoxDescent) / 2 || fs * .36;
       g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.fillStyle = COR.preto;
       g.fillText(str, X0, Y0 + off);
@@ -77,7 +81,7 @@ export function criarEstampa(resolucao = 1024) {
 
     // costas: nome e "Rep. Tumba" centralizados numa listra branca (ímpar), número grande num quadro branco
     const naBranca = y => { let j = Math.floor(y / f); if (j % 2 === 0) j++; return (j + .5) * f; };
-    txt('costas', nome, 0, naBranca(L * B.nome.y), B.nome.alt, B.nome.largMax, FONTE_NOME, 700);
+    txt('costas', nome, 0, naBranca(L * B.nome.y), B.nome.alt, B.nome.largMax, FONTE_NOME, 700, .09);
     const wB = Math.min(.34, Math.max(B.numero.quadro[0], medir(gC, num, B.numero.alt, FONTE_NUM, 800) + .03));
     quadro('costas', 0, L * B.numero.y, wB, B.numero.quadro[1]);
     txt('costas', num, 0, L * B.numero.y, B.numero.alt, num.length > 2 ? wB - .03 : B.numero.largMax, FONTE_NUM, 800);
