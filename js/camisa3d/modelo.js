@@ -186,28 +186,33 @@ export async function carregarModelo() {
 /* ---------- física leve do pano (mola) ----------
    Não é simulação de tecido (pesada demais para o site): cada ponto tem um peso de balanço
    (0 = preso nos ombros e na gola; 1 = barra) e, na placa de vídeo, gira um pouco em volta do eixo
-   da camisa, com uma leve ondulação. O ângulo (uTorcao) vem de uma mola calculada no viewer. */
-export const BALANCO = { uTorcao: { value: 0 }, uTempo: { value: 0 } };
+   da camisa, com ondulação; a barra também se abre (girando rápido) e balança para a frente e para trás
+   (inclinando). Os valores vêm de molas calculadas no viewer. */
+export const BALANCO = { uTorcao: { value: 0 }, uAbertura: { value: 0 }, uPendulo: { value: 0 }, uTempo: { value: 0 } };
 function pesosBalanco(geo, ext) {
   const p = geo.attributes.position, uv = geo.attributes.uv, dm = geo.attributes.dManga, w = new Float32Array(p.count);
   const suave = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
   for (let i = 0; i < p.count; i++) {
     const k = peca(uv.getX(i), uv.getY(i));
     if (k === 'gola') w[i] = 0;
-    else if (k === 'manga') w[i] = .6 * Math.pow(1 - dm.getX(i), 1.5);              // a boca da manga balança mais
+    else if (k === 'manga') w[i] = .9 * Math.pow(1 - dm.getX(i), 1.3);              // a boca da manga balança mais
     else w[i] = Math.pow(1 - suave(0, ext.L * .8, p.getY(i)), 1.6);                    // do peito (preso) à barra (solta)
   }
   geo.setAttribute('aBalanco', new THREE.BufferAttribute(w, 1));
 }
 function balancoNoShader(sh) {
-  sh.uniforms.uTorcao = BALANCO.uTorcao; sh.uniforms.uTempo = BALANCO.uTempo;
+  for (const [nome, u] of Object.entries(BALANCO)) sh.uniforms[nome] = u;
   sh.vertexShader = `attribute float aBalanco;
-uniform float uTorcao, uTempo;
-float anguloBalanco(vec3 p) { return uTorcao * aBalanco * (1. + .35 * sin(p.y * 14. - uTempo * 5. + p.x * 5.)); }
+uniform float uTorcao, uAbertura, uPendulo, uTempo;
+float onda(vec3 p) { return 1. + .55 * sin(p.y * 10. - uTempo * 6. + p.x * 6.) + .2 * sin(p.y * 23. + uTempo * 9.); }
+float anguloBalanco(vec3 p) { return uTorcao * aBalanco * onda(p); }
 vec2 girarBalanco(vec2 v, float a) { float c = cos(a), s = sin(a); return vec2(c * v.x + s * v.y, -s * v.x + c * v.y); }
 ` + sh.vertexShader
     .replace('#include <beginnormal_vertex>', '#include <beginnormal_vertex>\n objectNormal.xz = girarBalanco(objectNormal.xz, anguloBalanco(position));')
-    .replace('#include <begin_vertex>', '#include <begin_vertex>\n transformed.xz = girarBalanco(transformed.xz, anguloBalanco(position));');
+    .replace('#include <begin_vertex>', '#include <begin_vertex>\n transformed.xz = girarBalanco(transformed.xz, anguloBalanco(position));' +
+      // barra se abrindo para fora (como saia ao girar) e balançando para a frente/trás (pêndulo)
+      '\n { float w2 = aBalanco * aBalanco; float lr = length(transformed.xz); if (lr > 1e-4) transformed.xz += transformed.xz / lr * uAbertura * w2 * onda(position);' +
+      '\n   transformed.z += uPendulo * w2 * (.8 + .2 * onda(position)); }');
 }
 
 /* ---------- forno: pinta o design na textura, peça por peça ---------- */

@@ -190,9 +190,25 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
   new IntersectionObserver(es => { visivel = es[0].isIntersecting; sujo = true; }).observe(canvas);
   const botoes = [...document.querySelectorAll('[data-side]')];
   const offset = new THREE.Vector3(), sph = new THREE.Spherical();
-  // mola do pano: a barra e as mangas ficam para trás quando a camisa gira e assentam ao parar
-  const MOLA = { rigidez: 55, amortecimento: 5.5, arrasto: .035, max: .08 };
-  let torcao = 0, velTorcao = 0, azAnterior = null, giroAuto = 0;
+  // molas do pano: a barra e as mangas ficam para trás quando a camisa gira, a barra se abre girando
+  // rápido e balança para a frente/trás ao inclinar; tudo assenta oscilando quando para
+  // (rigidez: quão rápido volta; amortecimento: quanto oscila; ganho: quanto reage; max: limite)
+  const MOLAS = {
+    torcao:   { rigidez: 28, amortecimento: 3.2, ganho: .09,  max: .32 },   // rad
+    abertura: { rigidez: 24, amortecimento: 3.6, ganho: .014, max: .045 },  // m
+    pendulo:  { rigidez: 22, amortecimento: 2.8, ganho: .09,  max: .06 }    // m
+  };
+  const estadoMola = { torcao: [0, 0], abertura: [0, 0], pendulo: [0, 0] };   // [posição, velocidade]
+  const passoMola = (nome, alvo, dt) => {
+    const m = MOLAS[nome], s = estadoMola[nome];
+    alvo = Math.max(-m.max, Math.min(m.max, alvo));
+    const n = Math.ceil(dt * 60), h = dt / n;                       // passos de até 1/60 s: estável mesmo com quadros lentos
+    for (let i = 0; i < n; i++) { s[1] += ((alvo - s[0]) * m.rigidez - s[1] * m.amortecimento) * h; s[0] += s[1] * h; }
+    const ativa = Math.abs(s[0]) > m.max * 2e-3 || Math.abs(s[1]) > m.max * 2e-2 || Math.abs(alvo) > m.max * 2e-3;
+    if (!ativa) s[0] = s[1] = 0;
+    return ativa;
+  };
+  let azAnterior = null, phiAnterior = null, giroAuto = 0;
   chao.material.opacity = .5;
 
   renderer.setAnimationLoop(agora => {
@@ -206,14 +222,18 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
     azAnterior = az;
     if (controls.autoRotate && (giroAuto += Math.abs(dAz)) > 2 * Math.PI) { controls.autoRotate = false; alvoAz = 0; }
 
-    // mola: alvo proporcional à velocidade do giro; a torção persegue o alvo e oscila até assentar
+    // molas: alvo proporcional à velocidade do giro / da inclinação; o pano persegue o alvo e oscila até assentar
     // (a câmera girando equivale à camisa girando ao contrário: a barra fica para trás no sentido da câmera)
-    const alvo = Math.max(-MOLA.max, Math.min(MOLA.max, dAz / Math.max(dt, 1e-3) * MOLA.arrasto));
-    velTorcao += ((alvo - torcao) * MOLA.rigidez - velTorcao * MOLA.amortecimento) * dt;
-    torcao += velTorcao * dt;
-    const molaAtiva = Math.abs(torcao) > 2e-4 || Math.abs(velTorcao) > 2e-3;
-    if (!molaAtiva) { torcao = 0; velTorcao = 0; }
-    BALANCO.uTorcao.value = torcao;
+    const phi = controls.getPolarAngle(), dPhi = phiAnterior === null ? 0 : phi - phiAnterior; phiAnterior = phi;
+    const w = dAz / Math.max(dt, 1e-3), wPhi = dPhi / Math.max(dt, 1e-3);
+    const molaAtiva = [
+      passoMola('torcao', w * MOLAS.torcao.ganho, dt),
+      passoMola('abertura', Math.abs(w) * MOLAS.abertura.ganho, dt),
+      passoMola('pendulo', -wPhi * MOLAS.pendulo.ganho, dt)
+    ].some(Boolean);
+    BALANCO.uTorcao.value = estadoMola.torcao[0];
+    BALANCO.uAbertura.value = estadoMola.abertura[0];
+    BALANCO.uPendulo.value = estadoMola.pendulo[0];
     BALANCO.uTempo.value = agora / 1000;
 
     const escalaMudando = escala.distanceToSquared(escalaAlvo) > 1e-8;
@@ -252,6 +272,6 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
     if (mudou !== alterada && botaoInicio) { alterada = mudou; botaoInicio.classList.toggle('visivel', mudou); botaoInicio.tabIndex = mudou ? 0 : -1; }
     if (!pronto) { pronto = true; onPronto(); }
   });
-  if (new URLSearchParams(location.search).has('debug')) window.__camisa = { camera, controls, scene, renderer, quadros: () => renderer.info.render.frame, redesenhar };   // inspeção no console
+  if (new URLSearchParams(location.search).has('debug')) window.__camisa = { camera, controls, scene, renderer, quadros: () => renderer.info.render.frame, redesenhar, MOLAS, estadoMola };   // inspeção no console
   return { setModel, setText, showSide, stopSpin };
 }
