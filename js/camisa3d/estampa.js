@@ -29,7 +29,8 @@ export const DESIGN = {
     // escudo bordado: corpo com contorno branco (0,45 cm real) e 3 estrelas vermelhas, tudo em alto-relevo
     // o círculo do escudo ocupa 90% da altura da 2ª vermelha, centralizado nela; as estrelas sobem para a branca de cima
     escudo: { x: .098,  listra: 2, circulo: .9, bordaReal: .0045 },
-    numero: { listra: 3, alt: .07, quadro: .095 }    // na 3ª vermelha, num quadro branco da altura da listra
+    // na 3ª vermelha, num quadro branco da altura da listra que vai até 1 cm (real) de cada ponta do número
+    numero: { listra: 3, alt: .07, margemReal: .01 }
   },
   costas: {
     // nome: padrão fixo da camisa real (cada letra 4,4 × 2,7 cm, 0,7 cm entre letras), na 1ª branca
@@ -245,9 +246,15 @@ export function criarEstampa(resolucao = 1024) {
     }
     escudoBordado(gF, gR, img.escudo, ...pos.frente(F.escudo.x, lE.meio), largEscudo * k, F.escudo.bordaReal * (ext.escalaReal || 1) * k, subir);
     const lN = listra('vermelha', F.numero.listra), yN = lN.meio;
-    const wN = Math.max(F.numero.quadro, medir(gF, num, F.numero.alt, FONTE_NUM, 800) + .03);
-    quadro('frente', 0, yN, wN, lN.topo - lN.baixo);
-    txt('frente', num, 0, yN, F.numero.alt, wN - .02, FONTE_NUM, 800);
+    {
+      // largura pela tinta do número (não pelo espaço da fonte), centralizado por ela
+      gF.letterSpacing = '0px'; gF.font = `800 ${F.numero.alt * k / .72}px ${FONTE_NUM}`;
+      const m = gF.measureText(num), tinta = (m.actualBoundingBoxLeft + m.actualBoundingBoxRight) / k;
+      quadro('frente', 0, yN, tinta + 2 * F.numero.margemReal * (ext.escalaReal || 1), lN.topo - lN.baixo);
+      const [Xc, Yc] = pos.frente(0, yN);
+      gF.textAlign = 'left'; gF.textBaseline = 'alphabetic'; gF.fillStyle = COR.preto;
+      gF.fillText(num, Xc - tinta * k / 2 + m.actualBoundingBoxLeft, Yc + (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2);
+    }
 
     // costas: nome e "Rep. Tumba" centralizados em listras brancas, número grande com borda branca
     nomeFixo(nome, listra('branca', B.nome.listra).meio);
