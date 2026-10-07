@@ -150,7 +150,6 @@ for (const id of Object.keys(RULES)) el[id].addEventListener('input', () => { if
 $$('[data-next]').forEach(b => b.addEventListener('click', () => {
   const sec = b.dataset.next, bad = firstBad(sec);
   if (bad) return focusBad(bad);
-  markDone(sec);
   const next = { dados: '#camisa', camisa: '#pagamento' }[sec];
   $(next).scrollIntoView({ behavior: 'smooth' });
 }));
@@ -252,15 +251,25 @@ function updateSummary() {
 }
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-/* etapas no topo */
-function markDone(sec) { $(`.steps a[data-step=${sec}]`).classList.add('done'); }
-const stepLinks = $$('.steps a');
-new IntersectionObserver(es => {
-  es.forEach(e => { if (e.isIntersecting) stepLinks.forEach(a => a.classList.toggle('on', a.dataset.step === e.target.id)); });
-}, { rootMargin: '-45% 0px -50% 0px' }).observe($('#dados'));
-['#camisa', '#pagamento'].forEach(s => new IntersectionObserver(es => {
-  es.forEach(e => { if (e.isIntersecting) stepLinks.forEach(a => a.classList.toggle('on', a.dataset.step === e.target.id)); });
-}, { rootMargin: '-45% 0px -50% 0px' }).observe($(s)));
+/* etapas no topo: as estrelas acendem até a etapa em que o usuário está (a do meio da tela);
+   ao voltar, as das etapas seguintes apagam; no início da página ficam todas apagadas */
+const etapas = $$('.steps a'), secoesEtapa = etapas.map(a => $('#' + a.dataset.step));
+let etapaAtual = null;
+function atualizarEtapas() {
+  let atual = -1;
+  secoesEtapa.forEach((s, i) => { if (s.getBoundingClientRect().top <= innerHeight * .5) atual = i; });
+  if (atual === etapaAtual) return;
+  etapaAtual = atual;
+  etapas.forEach((a, i) => {
+    a.classList.toggle('acesa', i <= atual);
+    a.classList.toggle('on', i === atual);
+    if (i === atual) a.setAttribute('aria-current', 'step'); else a.removeAttribute('aria-current');
+  });
+}
+let rqEtapas = 0;
+addEventListener('scroll', () => { if (!rqEtapas) rqEtapas = requestAnimationFrame(() => { rqEtapas = 0; atualizarEtapas(); }); }, { passive: true });
+addEventListener('resize', atualizarEtapas);
+atualizarEtapas();
 
 /* envio */
 const readB64 = f => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = () => no(r.error); r.readAsDataURL(f); });
