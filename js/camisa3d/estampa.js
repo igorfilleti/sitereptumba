@@ -12,7 +12,6 @@ const FONTE_NOME = '"Saira Condensed","Saira Extra Condensed","Arial Narrow",san
 export const DESIGN = {
   faixa: .0525,                                    // altura de cada listra; a da barra é vermelha
   ombro: 12,                                       // da 12ª listra para cima é tudo vermelho (ombros e gola)
-  punho: .03,                                      // largura do punho preto
   frente: {
     icone:  { x: -.098, y: .745, larg: .085 },
     escudo: { x: .098,  y: .75,  larg: .07 },
@@ -23,7 +22,11 @@ export const DESIGN = {
     numero: { y: .6,  alt: .23, largMax: .24, quadro: [.2, .24] },
     rep:    { y: .33, larg: .22 }
   },
-  manga: { unicamp: { z: -.025, y: .555, larg: .085 } }  // só na manga esquerda de quem veste
+  manga: {
+    // do punho ao ombro, no ponto mais longo da manga (cm); ajustadas ao comprimento real do modelo
+    listras: { punho: 3, branca1: 3.4, vermelha: 7.8, branca2: 14 },
+    unicamp: { z: -.025, y: .535, larg: .085 }       // só na manga esquerda de quem veste
+  }
 };
 
 export function criarEstampa(resolucao = 1024) {

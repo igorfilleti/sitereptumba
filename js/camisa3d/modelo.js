@@ -71,8 +71,9 @@ function golaV(geo) {
 
 /* Nas mangas as listras seguem a manga (paralelas ao punho), não o tronco.
    As linhas de v constante do molde são paralelas à boca da manga, mas v não
-   cresce por igual ao longo dela; por isso cada vértice ganha a distância real
-   (em metros) até a boca, medida no eixo da manga: atributo "dManga". */
+   cresce por igual ao longo dela; por isso cada vértice ganha a distância real até a
+   boca, medida no eixo da manga e dividida pelo comprimento total da manga (0 = punho,
+   1 = ombro, no ponto mais longo): atributo "dManga". */
 function distanciaManga(geo) {
   const p = geo.attributes.position, uv = geo.attributes.uv, d = new Float32Array(p.count);
   const passo = .005;
@@ -90,8 +91,9 @@ function distanciaManga(geo) {
     const dist = centro.map(c => (ult = c ? Math.max(ult, ((c[0] - ini[0]) * e[0] + (c[1] - ini[1]) * e[1] + (c[2] - ini[2]) * e[2]) / l) : ult));
     for (const i of idx) {
       const f = (uv.getY(i) - vMin) / passo - .5, b = Math.max(0, Math.min(nb - 2, Math.floor(f))), t = Math.min(1, Math.max(0, f - b));
-      d[i] = dist[b] * (1 - t) + dist[b + 1] * t;
+      d[i] = (dist[b] * (1 - t) + dist[b + 1] * t) / dist[nb - 1];
     }
+    (geo.userData.compManga ||= []).push(dist[nb - 1]);
   }
   geo.setAttribute('dManga', new THREE.BufferAttribute(d, 1));
 }
@@ -140,7 +142,8 @@ void main() {
 }`;
 const FS = `
 uniform sampler2D tFrente, tCostas, tManga;
-uniform vec3 uExt; uniform float uFaixa, uOmbro, uPunho;
+uniform vec3 uExt; uniform float uFaixa, uOmbro;
+uniform vec3 uManga;   // fim do punho, da branca e da vermelha (fração da manga, a partir do punho)
 uniform vec4 uGolaV;   // meia largura, fundo, borda, faixa
 uniform vec3 cBranco, cVermelho, cPreto;
 varying vec3 vP; varying vec2 vUv; varying float vDm;
@@ -152,21 +155,28 @@ void main() {
   verm = max(verm, smoothstep(uOmbro - w * 2. * uFaixa, uOmbro + w * 2. * uFaixa, vP.y));   // ombros vermelhos
   vec3 c = mix(cBranco, cVermelho, verm);
   bool gola = vUv.y < .056, manga = !gola && vUv.y < .28;
-  if (manga) {   // manga: listras paralelas ao punho, começando por uma branca logo acima dele
-    float sm = (vDm - uPunho) / (2. * uFaixa), fm = fract(sm), wm = max(fwidth(sm), 1e-4);
-    c = mix(cBranco, cVermelho, smoothstep(.5 - wm, .5 + wm, fm) * (1. - smoothstep(1. - 2. * wm, 1., fm)));
+  if (manga) {   // manga, do punho ao ombro: preto, branca, vermelha, branca (paralelas ao punho)
+    float wm = max(fwidth(vDm), 1e-4);
+    c = mix(cBranco, cVermelho, smoothstep(uManga.y - wm, uManga.y + wm, vDm) * (1. - smoothstep(uManga.z - wm, uManga.z + wm, vDm)));
+    c = mix(cPreto, c, smoothstep(uManga.x - wm, uManga.x + wm, vDm));
   }
   vec4 a = vec4(0.);
   bool frente = !gola && !manga && vUv.x < .5;
   float vn = uGolaV.y + (uGolaV.z - uGolaV.y) * abs(vP.x) / uGolaV.x;   // linha do V
   bool golaFrente = frente && abs(vP.x) < uGolaV.x && vP.y > vn - uGolaV.w;
-  if (gola || golaFrente || (manga && vDm < uPunho)) c = cPreto;
+  if (gola || golaFrente) c = cPreto;
   else if (manga) { if (vUv.x > .38 && vUv.x < .76) a = adesivo(tManga, vec2((uExt.z - vP.z) / (2. * uExt.z), vP.y / uExt.y)); }
   else if (vUv.x < .5) a = adesivo(tFrente, vec2((vP.x + uExt.x) / (2. * uExt.x), vP.y / uExt.y));
   else a = adesivo(tCostas, vec2((uExt.x - vP.x) / (2. * uExt.x), vP.y / uExt.y));
   c = mix(c, a.rgb, a.a);
   gl_FragColor = vec4(pow(c, vec3(2.2)), 1.);   // saída linear; o alvo sRGB codifica de volta
 }`;
+
+/* faixas da manga (cm, do punho ao ombro), proporcionais ao comprimento do modelo */
+function listrasManga() {
+  const m = DESIGN.manga.listras, total = m.punho + m.branca1 + m.vermelha + m.branca2;
+  return new THREE.Vector3(m.punho / total, (m.punho + m.branca1) / total, (m.punho + m.branca1 + m.vermelha) / total);
+}
 
 export function criarForno(renderer, geo, ext, telas, tamanho = 2048) {
   const alvo = new THREE.WebGLRenderTarget(tamanho, tamanho, {
@@ -183,7 +193,7 @@ export function criarForno(renderer, geo, ext, telas, tamanho = 2048) {
       tFrente: { value: tex.frente }, tCostas: { value: tex.costas }, tManga: { value: tex.manga },
       uExt: { value: new THREE.Vector3(ext.X, ext.L, ext.Z) }, uFaixa: { value: DESIGN.faixa }, uOmbro: { value: DESIGN.ombro * DESIGN.faixa },
       uGolaV: { value: new THREE.Vector4(GOLA_V.meia, GOLA_V.fundo, GOLA_V.borda, GOLA_V.faixa) },
-      uPunho: { value: DESIGN.punho }, uDesloc: { value: new THREE.Vector2() },
+      uManga: { value: listrasManga() }, uDesloc: { value: new THREE.Vector2() },
       cBranco: { value: hex(COR.branco) }, cVermelho: { value: hex(COR.vermelho) }, cPreto: { value: hex(COR.preto) }
     }
   });
