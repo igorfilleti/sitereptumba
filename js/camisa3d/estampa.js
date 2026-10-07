@@ -51,9 +51,10 @@ export const DESIGN = {
     // do punho ao ombro, no ponto mais longo da manga (cm); ajustadas ao comprimento real do modelo
     listras: { punho: 3, branca1: 3.4, vermelha: 7.8, branca2: 14 },
     // só na manga esquerda de quem veste, centralizado no lado de fora e seguindo as listras da manga.
-    // Medidas em fração da altura da listra vermelha da manga (como na foto da camisa real):
-    // o símbolo atravessa a divisa com a branca de cima; o texto fica na parte de baixo da vermelha.
-    unicamp: { simbolo: { larg: .865, centro: .175 }, texto: { larg: 1.1, centro: -.85 }, contornoReal: .0015 }   // símbolo: 73% da altura da vermelha
+    // Medidas reais, convertidas pela listra vermelha da manga (7,8 cm na camisa real):
+    // símbolo 8,5 × 7 cm atravessando a divisa com a branca de cima (74% acima dela, como na foto);
+    // texto "UNICAMP" da largura do símbolo, centrado a 85% da altura da vermelha, de cima para baixo.
+    unicamp: { simbolo: { largReal: .085, acimaDaDivisa: .74 }, texto: { largReal: .085, centro: -.85 }, contornoReal: .0015 }
   }
 };
 
@@ -270,7 +271,10 @@ export function criarEstampa(resolucao = 1024) {
 
     // manga esquerda: símbolo e texto da Unicamp separados, com contorno branco fino, alinhados às listras
     if (img.unicamp) {
+      const im0 = () => ({ w: img.unicamp.naturalWidth, h: img.unicamp.naturalHeight });
       const U = DESIGN.manga.unicamp, vermAlt = ext.manga ? ext.manga.vermAlt : .063;   // altura da vermelha no lado de fora
+      const vermReal = DESIGN.manga.listras.vermelha / 100;                      // 7,8 cm na camisa real
+      const altSimbolo = U.simbolo.largReal / vermReal * (UNICAMP_SIMBOLO_FIM * im0().h / im0().w);   // em alturas da vermelha
       const im = img.unicamp, W = im.naturalWidth, H = im.naturalHeight, borda = U.contornoReal * (ext.escalaReal || 1) * km;
       const peca = (y0, y1, larg, centro) => {                 // recorte da imagem (frações da altura) desenhado na manga
         const sw = W, sh = (y1 - y0) * H, w = larg * vermAlt * km, h = w * sh / sw;
@@ -282,8 +286,8 @@ export function criarEstampa(resolucao = 1024) {
         for (let a = 0; a < 16; a++) gM.drawImage(branco, cx - w / 2 + Math.cos(a / 8 * Math.PI) * borda, cy - h / 2 + Math.sin(a / 8 * Math.PI) * borda, w, h);
         gM.drawImage(c, cx - w / 2, cy - h / 2, w, h);
       };
-      peca(0, UNICAMP_SIMBOLO_FIM, U.simbolo.larg, U.simbolo.centro);
-      peca(UNICAMP_TEXTO_INICIO, 1, U.texto.larg, U.texto.centro);
+      peca(0, UNICAMP_SIMBOLO_FIM, U.simbolo.largReal / vermReal, (U.simbolo.acimaDaDivisa - .5) * altSimbolo);
+      peca(UNICAMP_TEXTO_INICIO, 1, U.texto.largReal / vermReal, U.texto.centro);
     }
     return telas;
   }

@@ -97,9 +97,9 @@ function golaV(geo, escalaReal, fundoDe) {
 }
 /* Nas mangas as listras seguem a manga (paralelas ao punho), não o tronco.
    As linhas de v constante do molde são paralelas à boca da manga, mas v não
-   cresce por igual ao longo dela; por isso cada vértice ganha a distância real até a
-   boca, medida no eixo da manga e dividida pelo comprimento total da manga (0 = punho,
-   1 = ombro, no ponto mais longo): atributo "dManga".
+   As listras são impressas no molde (UV), que é o molde de costura: cada vértice ganha a fração
+   da manga em v, da dobra da barra (0) ao topo (1): atributo "dManga". O comprimento pelo eixo
+   (compManga) é a base da escala real ÷ modelo.
    Para a manga esquerda guarda também onde fica o lado de fora no molde (u) e em que v
    cada fração da manga cai ali, para posicionar a logo da Unicamp no próprio molde. */
 const MOLDE_M_POR_UV = 1.17;   // o molde (UV) do modelo é o molde de costura: ~1,17 m por unidade, igual em u e v (medido)
@@ -118,24 +118,20 @@ function distanciaManga(geo) {
     // distância de cada faixa de v até a boca, ao longo do eixo (sempre crescente)
     let ult = 0;
     const dist = centro.map(c => (ult = c ? Math.max(ult, ((c[0] - ini[0]) * e[0] + (c[1] - ini[1]) * e[1] + (c[2] - ini[2]) * e[2]) / l) : ult));
-    for (const i of idx) {
-      const f = (uv.getY(i) - vMin) / passo - .5, b = Math.max(0, Math.min(nb - 2, Math.floor(f))), t = Math.min(1, Math.max(0, f - b));
-      d[i] = (dist[b] * (1 - t) + dist[b + 1] * t) / dist[nb - 1];
-    }
+    // listras impressas no molde, como na fábrica: a fração cresce por igual em v, da dobra da
+    // barra (onde a manga começa a aparecer; abaixo dela é a bainha dobrada para dentro) até o topo
+    const bDobra = dist.findIndex(x => x > .005), vDobra = vMin + Math.max(0, bDobra - .5) * passo;
+    const vDaFracao = fr => vDobra + fr * (vMax - vDobra);
+    for (const i of idx) d[i] = Math.min(1, Math.max(0, (uv.getY(i) - vDobra) / (vMax - vDobra)));
     (geo.userData.compManga ||= []).push(dist[nb - 1]);
     if (nomeLado === 'esquerda') {
-      // v em que a manga atinge uma fração (inverso de dist), e o u do lado de fora (x máximo no meio da manga)
-      const vDaFracao = fr => {
-        const alvo = fr * dist[nb - 1];
-        for (let b = 1; b < nb; b++) if (dist[b] >= alvo) { const t = (alvo - dist[b - 1]) / ((dist[b] - dist[b - 1]) || 1); return vMin + (b - .5 + t) * passo; }
-        return vMax;
-      };
+      // u do lado de fora (x máximo no meio da manga)
       let fora = null;
       for (const i of idx) if (d[i] > .45 && d[i] < .65 && (!fora || p.getX(i) > p.getX(fora))) fora = i;
       // sentido: visto de fora (+x), a direita da tela é -z; vê se u cresce para lá
       let suz = 0, suu = 0; const uc = uv.getX(fora), zc = p.getZ(fora);
       for (const i of idx) { const du = uv.getX(i) - uc; if (Math.abs(du) < .03 && Math.abs(d[i] - d[fora]) < .05) { suz += du * (p.getZ(i) - zc); suu += du * du; } }
-      geo.userData.mangaEsq = { uc, vDaFracao, sentidoU: suz / (suu || 1) < 0 ? 1 : -1 };
+      geo.userData.mangaEsq = { uc, vDaFracao, comprimentoMolde: (vMax - vDobra) * MOLDE_M_POR_UV, sentidoU: suz / (suu || 1) < 0 ? 1 : -1 };
     }
   }
   geo.setAttribute('dManga', new THREE.BufferAttribute(d, 1));
