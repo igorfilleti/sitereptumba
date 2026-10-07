@@ -54,7 +54,8 @@ export const DESIGN = {
     // Medidas reais, convertidas pela listra vermelha da manga (7,8 cm na camisa real):
     // símbolo 8,5 × 7 cm com o centro bem na divisa com a branca de cima (metade em cada listra);
     // texto "UNICAMP" da largura do símbolo, centrado a 85% da altura da vermelha, de cima para baixo.
-    unicamp: { simbolo: { largReal: .085, acimaDaDivisa: .5 }, texto: { largReal: .085, centro: -.85 }, contornoReal: .0015 }
+    unicamp: { simbolo: { largReal: .085 * 1.1, acimaDaDivisa: .5 }, texto: { largReal: .085 * 1.1, centro: -.85 },   // +10% a pedido (visual)
+                contornoReal: .0015 }
   }
 };
 
