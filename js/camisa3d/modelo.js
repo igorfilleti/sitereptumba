@@ -49,31 +49,49 @@ const perfilGola = t => Math.pow(t, GOLA_V.curva);   // 0 no centro, 1 na latera
 function golaV(geo, escalaReal) {
   const p = geo.attributes.position, uv = geo.attributes.uv, { meia, fundo, base } = GOLA_V;
   const estica = DESIGN.gola.espessura * escalaReal / GOLA_PECA_VISIVEL;
-  // por faixa de 1 cm em x: topo original da frente e base original da gola (parte da frente)
-  const passo = .01, n = Math.round(meia / passo) + 2, decote = new Array(2 * n + 1).fill(0), baseGola = new Array(2 * n + 1).fill(9);
+  const suave = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+
+  // decote original da frente: altura máxima da frente por faixa de 1 cm em x
+  const passo = .01, n = Math.round(meia / passo) + 2, decote = new Array(2 * n + 1).fill(0);
   for (let i = 0; i < p.count; i++) {
-    const x = p.getX(i), k = peca(uv.getX(i), uv.getY(i));
-    if (Math.abs(x) > (n - .5) * passo) continue;
-    const b = Math.round(x / passo) + n;
-    if (k === 'frente') decote[b] = Math.max(decote[b], p.getY(i));
-    else if (k === 'gola' && p.getZ(i) > 0) baseGola[b] = Math.min(baseGola[b], p.getY(i));
+    const x = p.getX(i);
+    if (peca(uv.getX(i), uv.getY(i)) === 'frente' && Math.abs(x) <= (n - .5) * passo) { const b = Math.round(x / passo) + n; decote[b] = Math.max(decote[b], p.getY(i)); }
   }
-  const interp = arr => x => { const f = x / passo + n, i = Math.max(0, Math.min(2 * n - 1, Math.floor(f))), t = f - i; return arr[i] * (1 - t) + arr[i + 1] * t; };
-  const N = interp(decote), G = interp(baseGola);
+  const N = x => { const f = x / passo + n, i = Math.max(0, Math.min(2 * n - 1, Math.floor(f))), t = f - i; return decote[i] * (1 - t) + decote[i + 1] * t; };
   const bordaY = (N(-meia) + N(meia)) / 2;
   const alvo = x => fundo + (bordaY - fundo) * perfilGola(Math.min(1, Math.abs(x) / meia));   // nova linha do U
-  const suave = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  // um único campo de deslocamento para o peito e a gola: pontos da costura andam juntos
+  const D = (x, y) => (Math.abs(x) >= meia || y <= base ? 0 : Math.min(0, alvo(x) - N(x)) * Math.min(1, (y - base) / (N(x) - base)));
+
+  // a gola é uma tira dobrada: as duas bordas (v mínimo e máximo) ficam na costura e o
+  // meio da tira é a borda de cima. Para cada posição ao longo da tira (u), guarda a
+  // costura original; a gola acompanha a costura e só estica para cima a partir dela.
+  let vMin = 1, vMax = 0, uMin = 1, uMax = 0;
+  const gola = [];
+  for (let i = 0; i < p.count; i++) if (peca(uv.getX(i), uv.getY(i)) === 'gola') {
+    gola.push(i); vMin = Math.min(vMin, uv.getY(i)); vMax = Math.max(vMax, uv.getY(i)); uMin = Math.min(uMin, uv.getX(i)); uMax = Math.max(uMax, uv.getX(i));
+  }
+  const vMeio = (vMin + vMax) / 2, nu = 240, cost = Array.from({ length: nu }, () => [0, 0, 0]);
+  const binU = u => Math.max(0, Math.min(nu - 1, Math.floor((u - uMin) / (uMax - uMin) * nu)));
+  for (const i of gola) if (Math.abs(uv.getY(i) - vMeio) / (vMax - vMeio) > .92) { const c = cost[binU(uv.getX(i))]; c[0] += p.getX(i); c[1] += p.getY(i); c[2]++; }
+  for (let b = 0; b < nu; b++) if (!cost[b][2]) {                        // faixas sem pontos: usa a vizinha mais próxima
+    for (let k = 1; k < nu; k++) { const o = cost[b - k]?.[2] ? cost[b - k] : cost[b + k]?.[2] ? cost[b + k] : null; if (o) { cost[b] = [o[0] / o[2], o[1] / o[2], 1]; break; } }
+  }
+  const costura = cost.map(c => [c[0] / c[2], c[1] / c[2]]);
+
+  const novoY = new Float32Array(p.count);
   for (let i = 0; i < p.count; i++) {
-    const x = p.getX(i), y = p.getY(i), a = Math.abs(x);
-    if (a >= meia) continue;
-    const k = peca(uv.getX(i), uv.getY(i)), d = Math.min(0, alvo(x) - N(x));
-    if (k === 'frente' && y > base) p.setY(i, y + d * Math.min(1, (y - base) / (N(x) - base)));
+    const x = p.getX(i), y = p.getY(i), k = peca(uv.getX(i), uv.getY(i));
+    novoY[i] = y;
+    if (k === 'frente') novoY[i] = y + D(x, y);
     else if (k === 'gola') {
-      // a gola desce junto com o U e estica para cima a partir da base (some nas laterais e atrás)
-      const w = suave(-.005, .03, p.getZ(i)), s = 1 + (estica - 1) * w * (1 - suave(.6, 1, a / meia));
-      p.setY(i, y + (alvo(x) - G(x) + (y - G(x)) * (s - 1)) * w);
+      const [xc, yc] = costura[binU(uv.getX(i))];
+      const frente = suave(-.03, -.005, p.getZ(i));                     // 0 na gola de trás, 1 na da frente
+      const s = (estica - 1) * (1 - suave(.6, 1, Math.abs(xc) / meia)); // estica no U, some nas laterais
+      novoY[i] = y + frente * (D(x, yc) + (y - yc) * s);              // x próprio: casa exato com o peito
     }
   }
+  for (let i = 0; i < p.count; i++) p.setY(i, novoY[i]);
   p.needsUpdate = true;
   geo.computeBoundingBox();
 }
