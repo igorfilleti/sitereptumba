@@ -24,7 +24,7 @@ export const DESIGN = {
   costas: {
     nome:   { y: .85, alt: .046, largMax: .3 },
     numero: { y: .6,  alt: .23, largMax: .24, quadro: [.2, .24] },
-    rep:    { y: .33, larg: .22 }
+    rep:    { brancaDeBaixo: 2, largReal: .277 }     // penúltima listra branca (1 = a mais baixa); 27,7 cm na camisa real
   },
   manga: {
     // do punho ao ombro, no ponto mais longo da manga (cm); ajustadas ao comprimento real do modelo
@@ -81,7 +81,8 @@ export function criarEstampa(resolucao = 1024) {
     const wB = Math.min(.34, Math.max(B.numero.quadro[0], medir(gC, num, B.numero.alt, FONTE_NUM, 800) + .03));
     quadro('costas', 0, L * B.numero.y, wB, B.numero.quadro[1]);
     txt('costas', num, 0, L * B.numero.y, B.numero.alt, num.length > 2 ? wB - .03 : B.numero.largMax, FONTE_NUM, 800);
-    imagem(gC, img.rep, ...pos.costas(0, naBranca(L * B.rep.y)), B.rep.larg * k);
+    const brancaN = n => (2 * n - 1 + .5) * f;        // centro da n-ésima listra branca contando da barra
+    imagem(gC, img.rep, ...pos.costas(0, brancaN(B.rep.brancaDeBaixo)), B.rep.largReal * (ext.escalaReal || 1) * k);
 
     // manga esquerda (vista de fora, pelo lado +x): logo da Unicamp
     const U = DESIGN.manga.unicamp;

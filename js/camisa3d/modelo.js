@@ -146,6 +146,7 @@ export async function carregarModelo() {
   // camisa real → modelo: a manga real mede DESIGN.real.manga; a do modelo, o que foi medido acima
   const compManga = geo.userData.compManga.reduce((s, v) => s + v, 0) / geo.userData.compManga.length;
   const escalaReal = compManga / DESIGN.real.manga;
+  ext.escalaReal = escalaReal;                     // a estampa converte medidas reais com isso
   golaV(geo, escalaReal);
 
   const material = new THREE.MeshPhysicalMaterial({
