@@ -52,9 +52,9 @@ export const DESIGN = {
     listras: { punho: 3, branca1: 3.4, vermelha: 7.8, branca2: 14 },
     // só na manga esquerda de quem veste, centralizado no lado de fora e seguindo as listras da manga.
     // Medidas reais, convertidas pela listra vermelha da manga (7,8 cm na camisa real):
-    // símbolo 8,5 × 7 cm atravessando a divisa com a branca de cima (74% acima dela, como na foto);
+    // símbolo 8,5 × 7 cm com o centro bem na divisa com a branca de cima (metade em cada listra);
     // texto "UNICAMP" da largura do símbolo, centrado a 85% da altura da vermelha, de cima para baixo.
-    unicamp: { simbolo: { largReal: .085, acimaDaDivisa: .74 }, texto: { largReal: .085, centro: -.85 }, contornoReal: .0015 }
+    unicamp: { simbolo: { largReal: .085, acimaDaDivisa: .5 }, texto: { largReal: .085, centro: -.85 }, contornoReal: .0015 }
   }
 };
 
