@@ -54,15 +54,16 @@ const Shirt = (() => {
   const fila = {};
   const msg = $('#viewerMsg');
   const chamar = (k, a) => { if (real) real[k](...a); else fila[k] = a; };
+  const falhou = err => {
+    console.error('Camisa 3D:', err);
+    msg.textContent = 'Não foi possível abrir a visualização 3D, mas você pode continuar o pedido normalmente.';
+  };
   import('./camisa3d/viewer.js')
     .then(m => {
-      real = m.createShirt($('#shirt3d'), { onPronto: () => { msg.hidden = true; } });
+      real = m.createShirt($('#shirt3d'), { onPronto: () => { msg.hidden = true; }, onErro: falhou });
       for (const [k, a] of Object.entries(fila)) real[k](...a);
     })
-    .catch(err => {
-      console.error('Camisa 3D:', err);
-      msg.textContent = 'Não foi possível abrir a visualização 3D, mas você pode continuar o pedido normalmente.';
-    });
+    .catch(falhou);
   const api = {};
   for (const k of ['setModel', 'setText', 'showSide', 'stopSpin']) api[k] = (...a) => chamar(k, a);
   return api;

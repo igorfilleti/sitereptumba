@@ -28,9 +28,16 @@ css/style.css           estilos
 js/app.js               formulário, Pix e envio do pedido (CONFIG no topo)
 js/camisa3d/            camisa 3D (three.js)
   viewer.js             cena, luz, câmera e controles
-  geometria.js          modelo provisório da camisa (até chegar o .glb definitivo)
-  estampa.js            design: listras, gola, escudo, nome e número
+  modelo.js             carrega o modelo 3D e pinta o design na textura dele
+  estampa.js            design (arte da Icone): posições de logos, nome e número
 js/vendor/qrcode.js     gerador de QR Code (MIT)
-assets/img/             escudo, logo "Rep. Tumba" e Unicamp
+assets/img/             escudo, "Rep. Tumba", Unicamp e "icone"
+assets/models/camisa/   modelo 3D da camisa (glTF)
 servidor.ps1            servidor local para testes
 ```
+
+## Créditos
+
+Modelo 3D baseado em ["FC Porto Shirt"](https://sketchfab.com/3d-models/fc-porto-shirt-132d995c35f1480889ff544734ca86cf)
+de [Carlos.Maciel](https://sketchfab.com/Carlos.Maciel), licença
+[CC BY 4.0](http://creativecommons.org/licenses/by/4.0/). Modificado: textura, relevo e arte originais removidos.
