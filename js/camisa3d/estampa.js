@@ -79,6 +79,9 @@ export function listraDeCima(lim, L, cor, n) {
   return { baixo, topo, meio: (baixo + topo) / 2 };
 }
 
+// rugosidade da borracha em relação ao tecido (no mapa de brilho: #ffffff = tecido, mais escuro = mais liso)
+const BRILHO_BORRACHA = '#7a7a7a';
+
 // assets/img/rep.png: a tinta vai do topo do R/T (linha 1) à perninha do p (linha 114) de 116
 const REP_TINTA = { inicio: 1 / 116, fim: 115 / 116 };
 
@@ -126,8 +129,9 @@ function partesEscudo(im) {
 
 export function criarEstampa(resolucao = 1024) {
   const tela = () => document.createElement('canvas');
-  // relevo: mapa de altura da frente (bordados), em tons de cinza
-  const telas = { frente: tela(), costas: tela(), manga: tela(), relevo: tela() };
+  // relevo: mapa de altura da frente (bordados), em tons de cinza; brilho: rugosidade da frente
+  // (branco = tecido normal; mais escuro = mais liso, como a borracha do "icone")
+  const telas = { frente: tela(), costas: tela(), manga: tela(), relevo: tela(), brilho: tela() };
 
   /* ext = { X, Z, L }: meia largura, meia profundidade e altura do modelo (m) */
   function desenhar(ext, img, texto) {
@@ -140,6 +144,8 @@ export function criarEstampa(resolucao = 1024) {
     const gM = preparar(telas.manga, resolucao / 2, Math.round(MH * km));   // no molde da manga; centro = lado de fora, na divisa vermelha/branca
     const gR = preparar(telas.relevo, resolucao, Math.round(L * k));
     gR.fillStyle = '#000'; gR.fillRect(0, 0, telas.relevo.width, telas.relevo.height);
+    const gB = preparar(telas.brilho, resolucao, Math.round(L * k));
+    gB.fillStyle = '#fff'; gB.fillRect(0, 0, telas.brilho.width, telas.brilho.height);
     const pos = { frente: (x, y) => [(x + X) * k, (L - y) * k], costas: (x, y) => [(X - x) * k, (L - y) * k] };
     const ctxDe = { frente: gF, costas: gC };
 
@@ -250,12 +256,13 @@ export function criarEstampa(resolucao = 1024) {
 
     // frente: "icone" no peito direito, escudo no esquerdo, número num quadro branco sobre a listra vermelha
     imagem(gF, img.icone, ...pos.frente(F.icone.x, listra('vermelha', F.icone.listra).meio), F.icone.larg * k);
-    // "icone" é emborrachado: sobe do tecido na mesma altura do contorno do escudo, com superfície lisa
+    // "icone" é emborrachado: sobe do tecido um pouco mais que o bordado do escudo, com bordas
+    // bem definidas, e é mais liso que o tecido (leve brilho de borracha)
     if (img.icone) {
-      const im = img.icone, c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight;
-      const t2 = c.getContext('2d'); t2.drawImage(im, 0, 0); t2.globalCompositeOperation = 'source-in'; t2.fillStyle = '#e6e6e6'; t2.fillRect(0, 0, c.width, c.height);
-      const [X0, Y0] = pos.frente(F.icone.x, listra('vermelha', F.icone.listra).meio), w = F.icone.larg * k;
-      gR.save(); gR.filter = 'blur(.5px)'; imagem(gR, c, X0, Y0, w); gR.restore();
+      const im = img.icone, [X0, Y0] = pos.frente(F.icone.x, listra('vermelha', F.icone.listra).meio), w = F.icone.larg * k;
+      const silhueta = cor => { const c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight; const t2 = c.getContext('2d'); t2.drawImage(im, 0, 0); t2.globalCompositeOperation = 'source-in'; t2.fillStyle = cor; t2.fillRect(0, 0, c.width, c.height); return c; };
+      gR.save(); gR.filter = 'blur(.35px)'; imagem(gR, silhueta('#ffffff'), X0, Y0, w); gR.restore();
+      imagem(gB, silhueta(BRILHO_BORRACHA), X0, Y0, w);
     }
     const lE = listra('vermelha', F.escudo.listra), largEscudo = F.escudo.circulo * (lE.topo - lE.baixo) / CIRCULO_ESCUDO.diam;
     // estrelas inteiras na listra branca de cima, com a base 0,4 cm acima da vermelha

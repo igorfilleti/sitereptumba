@@ -187,8 +187,8 @@ void main() {
   gl_Position = vec4(uv.x * 2. - 1. + uDesloc.x, uv.y * 2. - 1. + uDesloc.y, 0., 1.);
 }`;
 const FS = `
-uniform sampler2D tFrente, tCostas, tManga, tRelevo;
-uniform int uModo;   // 0 = cor; 1 = relevo (altura dos bordados)
+uniform sampler2D tFrente, tCostas, tManga, tRelevo, tBrilho;
+uniform int uModo;   // 0 = cor; 1 = relevo (altura dos bordados); 2 = rugosidade (borracha mais lisa)
 uniform vec3 uExt;
 uniform vec4 uMangaMolde;   // adesivo da manga esquerda no molde: u do centro, v do centro, sentido de u, m por unidade
 uniform vec2 uMangaWH;
@@ -215,6 +215,10 @@ void main() {
   else if (manga) { if (vUv.x > .38 && vUv.x < .76) a = adesivo(tManga, vec2(.5 + uMangaMolde.z * (vUv.x - uMangaMolde.x) * uMangaMolde.w / uMangaWH.x, .5 + (vUv.y - uMangaMolde.y) * uMangaMolde.w / uMangaWH.y)); }
   else if (vUv.x < .5) a = adesivo(tFrente, vec2((vP.x + uExt.x) / (2. * uExt.x), vP.y / uExt.y));
   else a = adesivo(tCostas, vec2((uExt.x - vP.x) / (2. * uExt.x), vP.y / uExt.y));
+  if (uModo == 2) {   // rugosidade: 1 = tecido; menor = mais liso (só na frente)
+    vec4 b = (!gola && !manga && vUv.x < .5) ? adesivo(tBrilho, vec2((vP.x + uExt.x) / (2. * uExt.x), vP.y / uExt.y)) : vec4(0.);
+    gl_FragColor = vec4(vec3(b.a > .5 ? b.g : 1.), 1.); return;
+  }
   if (uModo == 1) {   // relevo: só os bordados da frente sobem
     float h = (!gola && !manga && vUv.x < .5) ? adesivo(tRelevo, vec2((vP.x + uExt.x) / (2. * uExt.x), vP.y / uExt.y)).r : 0.;
     gl_FragColor = vec4(vec3(h), 1.); return;
@@ -236,6 +240,7 @@ export function criarForno(renderer, geo, ext, telas, tamanho = 2048) {
   });
   alvo.texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
   const relevo = new THREE.WebGLRenderTarget(tamanho, tamanho, { generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter });
+  const rugosidade = new THREE.WebGLRenderTarget(tamanho / 2, tamanho / 2, { generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter });
   const tex = {};
   // alfa pré-multiplicado: nas bordas dos adesivos a filtragem não mistura o "preto transparente" do canvas,
   // então branco sobre listra branca funde no tecido, sem contorno cinza
@@ -244,7 +249,7 @@ export function criarForno(renderer, geo, ext, telas, tamanho = 2048) {
   const mat = new THREE.ShaderMaterial({
     vertexShader: VS, fragmentShader: FS, side: THREE.DoubleSide, depthTest: false, depthWrite: false,
     uniforms: {
-      tFrente: { value: tex.frente }, tCostas: { value: tex.costas }, tManga: { value: tex.manga }, tRelevo: { value: tex.relevo }, uModo: { value: 0 },
+      tFrente: { value: tex.frente }, tCostas: { value: tex.costas }, tManga: { value: tex.manga }, tRelevo: { value: tex.relevo }, tBrilho: { value: tex.brilho }, uModo: { value: 0 },
       uExt: { value: new THREE.Vector3(ext.X, ext.L, ext.Z) }, uLim: { value: ext.listras },
       uManga: { value: listrasManga() }, uDesloc: { value: new THREE.Vector2() },
       uMangaMolde: { value: new THREE.Vector4(ext.manga.uc, ext.manga.vc, ext.manga.sentidoU, MOLDE_M_POR_UV) }, uMangaWH: { value: new THREE.Vector2(ext.manga.W, ext.manga.H) },
@@ -263,7 +268,7 @@ export function criarForno(renderer, geo, ext, telas, tamanho = 2048) {
     for (const t of Object.values(tex)) t.needsUpdate = true;
     const antes = renderer.getRenderTarget(), autoClear = renderer.autoClear;
     renderer.autoClear = false;
-    for (const [modo, rt, fundo] of [[0, alvo, 0xffffff], [1, relevo, 0x000000]]) {
+    for (const [modo, rt, fundo] of [[0, alvo, 0xffffff], [1, relevo, 0x000000], [2, rugosidade, 0xffffff]]) {
       mat.uniforms.uModo.value = modo;
       renderer.setRenderTarget(rt); renderer.setClearColor(fundo, 1); renderer.clear();
       for (const [x, y] of passos) { mat.uniforms.uDesloc.value.set(x, y); renderer.render(cena, cam); }
@@ -271,5 +276,5 @@ export function criarForno(renderer, geo, ext, telas, tamanho = 2048) {
     renderer.autoClear = autoClear; renderer.setClearColor(0x000000, 0);
     renderer.setRenderTarget(antes);
   }
-  return { textura: alvo.texture, relevo: relevo.texture, assar };
+  return { textura: alvo.texture, relevo: relevo.texture, rugosidade: rugosidade.texture, assar };
 }

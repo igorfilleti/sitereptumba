@@ -78,6 +78,7 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
     m.material.map = forno.textura;
     m.material.bumpMap = forno.relevo;                // bordados em alto-relevo
     m.material.bumpScale = RELEVO;
+    m.material.roughnessMap = forno.rugosidade;       // a borracha do "icone" é mais lisa que o tecido
     camisa = new THREE.Mesh(m.geo, m.material);
     camisa.position.y = -m.ext.L / 2;
     const pivo = new THREE.Group(); pivo.add(camisa); grupo.add(pivo);
