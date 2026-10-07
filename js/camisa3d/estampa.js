@@ -50,7 +50,10 @@ export const DESIGN = {
   manga: {
     // do punho ao ombro, no ponto mais longo da manga (cm); ajustadas ao comprimento real do modelo
     listras: { punho: 3, branca1: 3.4, vermelha: 7.8, branca2: 14 },
-    unicamp: { z: -.025, y: .535, larg: .085 }       // só na manga esquerda de quem veste
+    // só na manga esquerda de quem veste, centralizado no lado de fora e seguindo as listras da manga.
+    // Medidas em fração da altura da listra vermelha da manga (como na foto da camisa real):
+    // o símbolo atravessa a divisa com a branca de cima; o texto fica na parte de baixo da vermelha.
+    unicamp: { simbolo: { larg: .865, centro: .175 }, texto: { larg: 1.1, centro: -.85 }, contornoReal: .0015 }   // símbolo: 73% da altura da vermelha
   }
 };
 
@@ -71,6 +74,9 @@ export function listraDeCima(lim, L, cor, n) {
   const baixo = i > 0 ? lim[i - 1] : 0, topo = i < lim.length ? lim[i] : L;
   return { baixo, topo, meio: (baixo + topo) / 2 };
 }
+
+// assets/img/unicamp.png: o símbolo vai do topo até 79,5% da altura; o texto, de 90% até a base
+const UNICAMP_SIMBOLO_FIM = .795, UNICAMP_TEXTO_INICIO = .9;
 
 // círculo preto dentro de assets/img/escudo.png (frações da largura/altura da imagem), medido na imagem
 const CIRCULO_ESCUDO = { cx: .49, cy: .508, diam: .776 };
@@ -120,11 +126,11 @@ export function criarEstampa(resolucao = 1024) {
   function desenhar(ext, img, texto) {
     const { X, Z, L } = ext, lim = ext.listras;
     const listra = (cor, n) => listraDeCima(lim, L, cor, n);
-    const k = resolucao / (2 * X), km = resolucao / 2 / (2 * Z);
+    const k = resolucao / (2 * X), MW = ext.manga ? ext.manga.W : .2, MH = ext.manga ? ext.manga.H : .2, km = resolucao / 2 / MW;
     const preparar = (c, w, h) => { if (c.width !== w || c.height !== h) { c.width = w; c.height = h; } const g = c.getContext('2d'); g.clearRect(0, 0, w, h); return g; };
     const gF = preparar(telas.frente, resolucao, Math.round(L * k));
     const gC = preparar(telas.costas, resolucao, Math.round(L * k));
-    const gM = preparar(telas.manga, resolucao / 2, Math.round(L * km));
+    const gM = preparar(telas.manga, resolucao / 2, Math.round(MH * km));   // no molde da manga; centro = lado de fora, na divisa vermelha/branca
     const gR = preparar(telas.relevo, resolucao, Math.round(L * k));
     gR.fillStyle = '#000'; gR.fillRect(0, 0, telas.relevo.width, telas.relevo.height);
     const pos = { frente: (x, y) => [(x + X) * k, (L - y) * k], costas: (x, y) => [(X - x) * k, (L - y) * k] };
@@ -262,9 +268,23 @@ export function criarEstampa(resolucao = 1024) {
     const brancaDeBaixo = n => listra('branca', DESIGN.listras.brancas + 1 - n).meio;   // 1 = a branca mais baixa
     imagem(gC, img.rep, ...pos.costas(0, brancaDeBaixo(B.rep.brancaDeBaixo)), B.rep.largReal * (ext.escalaReal || 1) * k);
 
-    // manga esquerda (vista de fora, pelo lado +x): logo da Unicamp
-    const U = DESIGN.manga.unicamp;
-    imagem(gM, img.unicamp, (Z - U.z) * km, (L - U.y) * km, U.larg * km);
+    // manga esquerda: símbolo e texto da Unicamp separados, com contorno branco fino, alinhados às listras
+    if (img.unicamp) {
+      const U = DESIGN.manga.unicamp, vermAlt = ext.manga ? ext.manga.vermAlt : .063;   // altura da vermelha no lado de fora
+      const im = img.unicamp, W = im.naturalWidth, H = im.naturalHeight, borda = U.contornoReal * (ext.escalaReal || 1) * km;
+      const peca = (y0, y1, larg, centro) => {                 // recorte da imagem (frações da altura) desenhado na manga
+        const sw = W, sh = (y1 - y0) * H, w = larg * vermAlt * km, h = w * sh / sw;
+        const cx = MW / 2 * km, cy = (MH / 2 - centro * vermAlt) * km;   // centro = divisa (topo da vermelha)
+        const c = document.createElement('canvas'); c.width = sw; c.height = Math.ceil(sh);
+        const t2 = c.getContext('2d'); t2.drawImage(im, 0, y0 * H, sw, sh, 0, 0, sw, sh);
+        const branco = document.createElement('canvas'); branco.width = c.width; branco.height = c.height;
+        const tb = branco.getContext('2d'); tb.drawImage(c, 0, 0); tb.globalCompositeOperation = 'source-in'; tb.fillStyle = COR.branco; tb.fillRect(0, 0, c.width, c.height);
+        for (let a = 0; a < 16; a++) gM.drawImage(branco, cx - w / 2 + Math.cos(a / 8 * Math.PI) * borda, cy - h / 2 + Math.sin(a / 8 * Math.PI) * borda, w, h);
+        gM.drawImage(c, cx - w / 2, cy - h / 2, w, h);
+      };
+      peca(0, UNICAMP_SIMBOLO_FIM, U.simbolo.larg, U.simbolo.centro);
+      peca(UNICAMP_TEXTO_INICIO, 1, U.texto.larg, U.texto.centro);
+    }
     return telas;
   }
   return { telas, desenhar };

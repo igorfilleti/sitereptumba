@@ -99,11 +99,14 @@ function golaV(geo, escalaReal, fundoDe) {
    As linhas de v constante do molde são paralelas à boca da manga, mas v não
    cresce por igual ao longo dela; por isso cada vértice ganha a distância real até a
    boca, medida no eixo da manga e dividida pelo comprimento total da manga (0 = punho,
-   1 = ombro, no ponto mais longo): atributo "dManga". */
+   1 = ombro, no ponto mais longo): atributo "dManga".
+   Para a manga esquerda guarda também onde fica o lado de fora no molde (u) e em que v
+   cada fração da manga cai ali, para posicionar a logo da Unicamp no próprio molde. */
+const MOLDE_M_POR_UV = 1.17;   // o molde (UV) do modelo é o molde de costura: ~1,17 m por unidade, igual em u e v (medido)
 function distanciaManga(geo) {
   const p = geo.attributes.position, uv = geo.attributes.uv, d = new Float32Array(p.count);
   const passo = .005;
-  for (const lado of [u => u < .38, u => u >= .38 && u < .76]) {
+  for (const [nomeLado, lado] of [['direita', u => u < .38], ['esquerda', u => u >= .38 && u < .76]]) {
     const idx = [];
     for (let i = 0; i < p.count; i++) if (peca(uv.getX(i), uv.getY(i)) === 'manga' && lado(uv.getX(i))) idx.push(i);
     const vMin = Math.min(...idx.map(i => uv.getY(i))), vMax = Math.max(...idx.map(i => uv.getY(i)));
@@ -120,10 +123,23 @@ function distanciaManga(geo) {
       d[i] = (dist[b] * (1 - t) + dist[b + 1] * t) / dist[nb - 1];
     }
     (geo.userData.compManga ||= []).push(dist[nb - 1]);
+    if (nomeLado === 'esquerda') {
+      // v em que a manga atinge uma fração (inverso de dist), e o u do lado de fora (x máximo no meio da manga)
+      const vDaFracao = fr => {
+        const alvo = fr * dist[nb - 1];
+        for (let b = 1; b < nb; b++) if (dist[b] >= alvo) { const t = (alvo - dist[b - 1]) / ((dist[b] - dist[b - 1]) || 1); return vMin + (b - .5 + t) * passo; }
+        return vMax;
+      };
+      let fora = null;
+      for (const i of idx) if (d[i] > .45 && d[i] < .65 && (!fora || p.getX(i) > p.getX(fora))) fora = i;
+      // sentido: visto de fora (+x), a direita da tela é -z; vê se u cresce para lá
+      let suz = 0, suu = 0; const uc = uv.getX(fora), zc = p.getZ(fora);
+      for (const i of idx) { const du = uv.getX(i) - uc; if (Math.abs(du) < .03 && Math.abs(d[i] - d[fora]) < .05) { suz += du * (p.getZ(i) - zc); suu += du * du; } }
+      geo.userData.mangaEsq = { uc, vDaFracao, sentidoU: suz / (suu || 1) < 0 ? 1 : -1 };
+    }
   }
   geo.setAttribute('dManga', new THREE.BufferAttribute(d, 1));
 }
-
 export async function carregarModelo() {
   const gltf = await new GLTFLoader().loadAsync(URL_MODELO);
   gltf.scene.updateMatrixWorld(true);
@@ -146,7 +162,10 @@ export async function carregarModelo() {
   // camisa real → modelo: a manga real mede DESIGN.real.manga; a do modelo, o que foi medido acima
   const compManga = geo.userData.compManga.reduce((s, v) => s + v, 0) / geo.userData.compManga.length;
   const escalaReal = compManga / DESIGN.real.manga;
-  ext.escalaReal = escalaReal;                     // a estampa converte medidas reais com isso
+  ext.escalaReal = escalaReal;
+  // adesivo da manga esquerda: 20 × 20 cm no molde, centrado no lado de fora, na divisa vermelha/branca de cima
+  { const fr = listrasManga(), me = geo.userData.mangaEsq, vTopo = me.vDaFracao(fr.z), vBaixo = me.vDaFracao(fr.y);
+    ext.manga = { W: .2, H: .2, uc: me.uc, vc: vTopo, sentidoU: me.sentidoU, vermAlt: (vTopo - vBaixo) * MOLDE_M_POR_UV }; }                     // a estampa converte medidas reais com isso
   // listras do tronco: do recorte da gola com o ombro até a barra; o U da gola termina no fim da listra do ombro
   golaV(geo, escalaReal, ombro => { ext.listras = limitesListras(ombro); return ext.listras[ext.listras.length - 1]; });
 
@@ -175,6 +194,8 @@ const FS = `
 uniform sampler2D tFrente, tCostas, tManga, tRelevo;
 uniform int uModo;   // 0 = cor; 1 = relevo (altura dos bordados)
 uniform vec3 uExt;
+uniform vec4 uMangaMolde;   // adesivo da manga esquerda no molde: u do centro, v do centro, sentido de u, m por unidade
+uniform vec2 uMangaWH;
 uniform float uLim[10];   // limites entre as 11 listras do tronco, da barra para cima
 uniform vec3 uManga;   // fim do punho, da branca e da vermelha (fração da manga, a partir do punho)
 uniform vec3 cBranco, cVermelho, cPreto;
@@ -194,7 +215,8 @@ void main() {
   }
   vec4 a = vec4(0.);
   if (gola) c = cPreto;
-  else if (manga) { if (vUv.x > .38 && vUv.x < .76) a = adesivo(tManga, vec2((uExt.z - vP.z) / (2. * uExt.z), vP.y / uExt.y)); }
+  // manga esquerda: o adesivo é desenhado no próprio molde, como na sublimação (fica reto e paralelo às listras)
+  else if (manga) { if (vUv.x > .38 && vUv.x < .76) a = adesivo(tManga, vec2(.5 + uMangaMolde.z * (vUv.x - uMangaMolde.x) * uMangaMolde.w / uMangaWH.x, .5 + (vUv.y - uMangaMolde.y) * uMangaMolde.w / uMangaWH.y)); }
   else if (vUv.x < .5) a = adesivo(tFrente, vec2((vP.x + uExt.x) / (2. * uExt.x), vP.y / uExt.y));
   else a = adesivo(tCostas, vec2((uExt.x - vP.x) / (2. * uExt.x), vP.y / uExt.y));
   if (uModo == 1) {   // relevo: só os bordados da frente sobem
@@ -227,6 +249,7 @@ export function criarForno(renderer, geo, ext, telas, tamanho = 2048) {
       tFrente: { value: tex.frente }, tCostas: { value: tex.costas }, tManga: { value: tex.manga }, tRelevo: { value: tex.relevo }, uModo: { value: 0 },
       uExt: { value: new THREE.Vector3(ext.X, ext.L, ext.Z) }, uLim: { value: ext.listras },
       uManga: { value: listrasManga() }, uDesloc: { value: new THREE.Vector2() },
+      uMangaMolde: { value: new THREE.Vector4(ext.manga.uc, ext.manga.vc, ext.manga.sentidoU, MOLDE_M_POR_UV) }, uMangaWH: { value: new THREE.Vector2(ext.manga.W, ext.manga.H) },
       cBranco: { value: hex(COR.branco) }, cVermelho: { value: hex(COR.vermelho) }, cPreto: { value: hex(COR.preto) }
     }
   });
