@@ -45,7 +45,9 @@ export const DESIGN = {
       inicio: { cor: 'vermelha', n: 2, pos: .55 },
       fim:    { cor: 'branca',   n: 3, pos: .85 }
     },
-    rep:    { brancaDeBaixo: 2, largReal: .277 }     // penúltima listra branca (1 = a mais baixa); 27,7 cm na camisa real
+    // "Rep. Tumba": na penúltima listra branca (1 = a mais baixa), com 1,1 cm (real) de folga do topo do R/T
+    // até a vermelha de cima e da perninha do p até a vermelha de baixo; a largura acompanha
+    rep:    { brancaDeBaixo: 2, margemReal: .011 }
   },
   manga: {
     // do punho ao ombro, no ponto mais longo da manga (cm); ajustadas ao comprimento real do modelo
@@ -76,6 +78,9 @@ export function listraDeCima(lim, L, cor, n) {
   const baixo = i > 0 ? lim[i - 1] : 0, topo = i < lim.length ? lim[i] : L;
   return { baixo, topo, meio: (baixo + topo) / 2 };
 }
+
+// assets/img/rep.png: a tinta vai do topo do R/T (linha 1) à perninha do p (linha 114) de 116
+const REP_TINTA = { inicio: 1 / 116, fim: 115 / 116 };
 
 // assets/img/unicamp.png: o símbolo vai do topo até 79,5% da altura; o texto, de 90% até a base
 const UNICAMP_SIMBOLO_FIM = .795, UNICAMP_TEXTO_INICIO = .9;
@@ -267,8 +272,13 @@ export function criarEstampa(resolucao = 1024) {
     // costas: nome e "Rep. Tumba" centralizados em listras brancas, número grande com borda branca
     nomeFixo(nome, listra('branca', B.nome.listra).meio);
     numeroCostas(num, naListra(B.numero.inicio), naListra(B.numero.fim));
-    const brancaDeBaixo = n => listra('branca', DESIGN.listras.brancas + 1 - n).meio;   // 1 = a branca mais baixa
-    imagem(gC, img.rep, ...pos.costas(0, brancaDeBaixo(B.rep.brancaDeBaixo)), B.rep.largReal * (ext.escalaReal || 1) * k);
+    if (img.rep) {
+      const lR = listra('branca', DESIGN.listras.brancas + 1 - B.rep.brancaDeBaixo), hB = lR.topo - lR.baixo;
+      const tinta = hB * (1 - 2 * B.rep.margemReal / DESIGN.listras.branca);         // do topo do R/T à perninha do p
+      const hImg = tinta / (REP_TINTA.fim - REP_TINTA.inicio), wImg = hImg * img.rep.naturalWidth / img.rep.naturalHeight;
+      const meioImg = lR.meio + ((REP_TINTA.inicio + REP_TINTA.fim) / 2 - .5) * hImg;    // centro da tinta no meio da listra
+      imagem(gC, img.rep, ...pos.costas(0, meioImg), wImg * k);
+    }
 
     // manga esquerda: símbolo e texto da Unicamp separados, com contorno branco fino, alinhados às listras
     if (img.unicamp) {
