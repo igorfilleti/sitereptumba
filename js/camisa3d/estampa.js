@@ -24,7 +24,8 @@ export const DESIGN = {
     numero: { y: .603, alt: .07, quadro: .095 }    // quadro branco: largura mínima; altura = 1 listra
   },
   costas: {
-    nome:   { y: .85, alt: .046, largMax: .3 },
+    // nome: padrão fixo da camisa real (cada letra 4,4 × 2,7 cm, 0,7 cm entre letras)
+    nome:   { y: .85, altReal: .044, largReal: .027, espacoReal: .007, largMax: .3 },
     numero: { y: .6,  alt: .23, largMax: .24, quadro: [.2, .24] },
     rep:    { brancaDeBaixo: 2, largReal: .277 }     // penúltima listra branca (1 = a mais baixa); 27,7 cm na camisa real
   },
@@ -67,6 +68,32 @@ export function criarEstampa(resolucao = 1024) {
       g.fillText(str, X0, Y0 + off);
     };
 
+    // nome letra por letra: altura e largura fixas por letra e espaço fixo entre elas (medidas reais → modelo)
+    const nomeFixo = (str, y) => {
+      const N = DESIGN.costas.nome, e = ext.escalaReal || 1, g = gC;
+      const alt = N.altReal * e, larg = N.largReal * e, esp = N.espacoReal * e;
+      g.letterSpacing = '0px'; g.font = `700 100px ${FONTE_NOME}`;
+      const cap = g.measureText('H').actualBoundingBoxAscent, fs = 100 * alt / cap;      // fonte em m para a altura pedida
+      const caixa = c => { const m = g.measureText(c); return { esq: m.actualBoundingBoxLeft * fs / 100, larg: (m.actualBoundingBoxLeft + m.actualBoundingBoxRight) * fs / 100 }; };
+      const letras = [...str].map(c => (c === ' ' ? null : { c, ...caixa(c) }));
+      // largura padrão: a de uma letra típica (mediana do alfabeto) passa a medir "larg"
+      const ref = [...'ABCDEGHKNOPRSUVXYZ'].map(c => caixa(c).larg).sort((a, b) => a - b)[9];
+      let sx = larg / ref, gap = esp;
+      const total = () => letras.reduce((s, l) => s + (l ? l.larg * sx : larg * .5), 0) + gap * (letras.length - 1);
+      if (total() > N.largMax) { const r = N.largMax / total(); sx *= r; gap *= r; }        // nomes longos: comprime por igual
+      let x = total() / 2;                                                                 // costas: x diminui para a direita de quem olha
+      g.textBaseline = 'alphabetic'; g.textAlign = 'left'; g.fillStyle = COR.preto;
+      for (const l of letras) {
+        const w = l ? l.larg * sx : larg * .5;
+        if (l) {
+          const [X0, Y0] = pos.costas(x, y - alt / 2);                                    // canto esquerdo (de quem olha), na linha de base
+          g.save(); g.translate(X0, Y0); g.scale(sx, 1); g.font = `700 ${fs * k}px ${FONTE_NOME}`;
+          g.fillText(l.c, l.esq * k, 0); g.restore();
+        }
+        x -= w + gap;
+      }
+    };
+
     const num = texto.numero || '10', nome = (texto.nome || 'JOGADOR').toUpperCase();
     const F = DESIGN.frente, B = DESIGN.costas;
 
@@ -81,7 +108,7 @@ export function criarEstampa(resolucao = 1024) {
 
     // costas: nome e "Rep. Tumba" centralizados numa listra branca (ímpar), número grande num quadro branco
     const naBranca = y => { let j = Math.floor(y / f); if (j % 2 === 0) j++; return (j + .5) * f; };
-    txt('costas', nome, 0, naBranca(L * B.nome.y), B.nome.alt, B.nome.largMax, FONTE_NOME, 700, .09);
+    nomeFixo(nome, naBranca(L * B.nome.y));
     const wB = Math.min(.34, Math.max(B.numero.quadro[0], medir(gC, num, B.numero.alt, FONTE_NUM, 800) + .03));
     quadro('costas', 0, L * B.numero.y, wB, B.numero.quadro[1]);
     txt('costas', num, 0, L * B.numero.y, B.numero.alt, num.length > 2 ? wB - .03 : B.numero.largMax, FONTE_NUM, 800);
