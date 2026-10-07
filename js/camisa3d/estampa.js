@@ -19,19 +19,29 @@ export const DESIGN = {
   // é convertido pela proporção entre as mangas (real ÷ modelo)
   real: { manga: .282 },                           // do ombro ao punho, no ponto mais longo
   gola: { espessura: .02 },                        // faixa preta da gola, na camisa real
-  faixa: .0525,                                    // altura de cada listra; a da barra é vermelha
-  ombro: 12,                                       // da 12ª listra para cima é tudo vermelho (ombros e gola)
+  // tronco: 11 listras horizontais, de cima para baixo: vermelha dos ombros (do recorte da gola com a
+  // costura do ombro até a 1ª branca), 5 brancas intercaladas com 4 vermelhas, e a vermelha estreita da
+  // barra. Medidas reais; no modelo são esticadas para caber do mesmo ponto do ombro até a barra.
+  listras: { ombro: .055, vermelha: .072, branca: .066, barra: .028, brancas: 5 },
   frente: {
-    icone:  { x: -.098, y: .745, larg: .085 },
-    escudo: { x: .098,  y: .75,  larg: .07 },
-    numero: { y: .603, alt: .07, quadro: .095 }    // quadro branco: largura mínima; altura = 1 listra
+    // listras contadas de cima (a 1ª vermelha é a dos ombros)
+    icone:  { x: -.098, listra: 2, larg: .085 },     // na 2ª vermelha
+    escudo: { x: .098,  listra: 2, larg: .07 },
+    numero: { listra: 3, alt: .07, quadro: .095 }    // na 3ª vermelha, num quadro branco da altura da listra
   },
   costas: {
-    // nome: padrão fixo da camisa real (cada letra 4,4 × 2,7 cm, 0,7 cm entre letras)
-    nome:   { y: .85, altReal: .044, largReal: .027, espacoReal: .007, largMax: .3 },
+    // nome: padrão fixo da camisa real (cada letra 4,4 × 2,7 cm, 0,7 cm entre letras), na 1ª branca
+    nome:   { listra: 1, altReal: .044, largReal: .027, espacoReal: .007, largMax: .3 },
     // número: padrão da camisa real (dígito 24,85 × 9,4 cm sem a borda, borda branca 0,3 cm, 2,4 cm entre dígitos),
-    // direto sobre as listras; começa meia listra abaixo da faixa do nome. Se não couber, tudo encolhe junto.
-    numero: { altReal: .2485, largReal: .094, bordaReal: .003, espacoReal: .024, largMax: .4 },
+    // direto sobre as listras. Se não couber, tudo encolhe junto.
+    numero: {
+      altReal: .2485, largReal: .094, bordaReal: .003, espacoReal: .024, largMax: .4,
+      // alinhamento com as listras, contadas de cima para baixo nas costas (a 1ª vermelha é a dos ombros);
+      // pos = fração da listra a partir do topo dela. A altura sai daqui; largura, borda e espaço
+      // acompanham na proporção da camisa real.
+      inicio: { cor: 'vermelha', n: 2, pos: .55 },
+      fim:    { cor: 'branca',   n: 3, pos: .85 }
+    },
     rep:    { brancaDeBaixo: 2, largReal: .277 }     // penúltima listra branca (1 = a mais baixa); 27,7 cm na camisa real
   },
   manga: {
@@ -41,13 +51,32 @@ export const DESIGN = {
   }
 };
 
+/* Limites entre as 11 listras do tronco (y a partir da barra, em m no modelo), de baixo para cima.
+   alturaOmbro = altura, no modelo, do recorte da gola com a costura do ombro (topo da listra do ombro). */
+export function limitesListras(alturaOmbro) {
+  const R = DESIGN.listras, alturas = [R.barra];
+  for (let i = 0; i < R.brancas; i++) alturas.push(R.branca, i < R.brancas - 1 ? R.vermelha : R.ombro);
+  const k = alturaOmbro / alturas.reduce((s, a) => s + a, 0);
+  const lim = []; let y = 0;
+  for (const a of alturas.slice(0, -1)) lim.push(y += a * k);      // 10 limites; acima do último, a vermelha dos ombros
+  return lim;
+}
+
+/* Listra n contada de cima (a 1ª vermelha é a dos ombros): { baixo, topo, meio } em m. */
+export function listraDeCima(lim, L, cor, n) {
+  const i = cor === 'vermelha' ? 2 * (lim.length / 2 + 1) - 2 * n : 2 * (lim.length / 2 + 1) - 1 - 2 * n;   // índice a partir da barra
+  const baixo = i > 0 ? lim[i - 1] : 0, topo = i < lim.length ? lim[i] : L;
+  return { baixo, topo, meio: (baixo + topo) / 2 };
+}
+
 export function criarEstampa(resolucao = 1024) {
   const tela = () => document.createElement('canvas');
   const telas = { frente: tela(), costas: tela(), manga: tela() };
 
   /* ext = { X, Z, L }: meia largura, meia profundidade e altura do modelo (m) */
   function desenhar(ext, img, texto) {
-    const { X, Z, L } = ext, f = DESIGN.faixa;
+    const { X, Z, L } = ext, lim = ext.listras;
+    const listra = (cor, n) => listraDeCima(lim, L, cor, n);
     const k = resolucao / (2 * X), km = resolucao / 2 / (2 * Z);
     const preparar = (c, w, h) => { if (c.width !== w || c.height !== h) { c.width = w; c.height = h; } const g = c.getContext('2d'); g.clearRect(0, 0, w, h); return g; };
     const gF = preparar(telas.frente, resolucao, Math.round(L * k));
@@ -101,12 +130,15 @@ export function criarEstampa(resolucao = 1024) {
 
     // número das costas: cada dígito com altura e largura fixas (a do 0 vira a largura padrão; o 1
     // fica mais estreito), espaço fixo entre os dígitos e borda branca por fora (medidas reais → modelo)
-    const numeroCostas = (str, topo) => {
+    // âncora: fração "pos" da listra, medida a partir do topo dela
+    const naListra = a => { const l = listra(a.cor, a.n); return l.topo - a.pos * (l.topo - l.baixo); };
+    const numeroCostas = (str, topo, fundo) => {
       const N = DESIGN.costas.numero, e = ext.escalaReal || 1, g = gC;
-      const alt = N.altReal * e, borda = N.bordaReal * e;
+      const alt = fundo !== undefined ? topo - fundo : N.altReal * e, prop = alt / N.altReal;   // prop: real → modelo
+      const borda = N.bordaReal * prop;
       g.letterSpacing = '0px'; g.font = `800 100px ${FONTE_NUM_COSTAS}`;
       const m0 = g.measureText('0'), sy = alt / (m0.actualBoundingBoxAscent + m0.actualBoundingBoxDescent);
-      let sx = N.largReal * e / (m0.actualBoundingBoxLeft + m0.actualBoundingBoxRight), gap = N.espacoReal * e;
+      let sx = N.largReal * prop / (m0.actualBoundingBoxLeft + m0.actualBoundingBoxRight), gap = N.espacoReal * prop;
       const dig = [...str].map(c => { const m = g.measureText(c); return { c, esq: m.actualBoundingBoxLeft, larg: m.actualBoundingBoxLeft + m.actualBoundingBoxRight, sobe: m.actualBoundingBoxAscent }; });
       const total = () => dig.reduce((s, d) => s + d.larg * sx, 0) + gap * (dig.length - 1);
       if (total() > N.largMax) { const r = N.largMax / total(); sx *= r; gap *= r; }
@@ -131,20 +163,18 @@ export function criarEstampa(resolucao = 1024) {
     const F = DESIGN.frente, B = DESIGN.costas;
 
     // frente: "icone" no peito direito, escudo no esquerdo, número num quadro branco sobre a listra vermelha
-    imagem(gF, img.icone, ...pos.frente(F.icone.x, L * F.icone.y), F.icone.larg * k);
-    imagem(gF, img.escudo, ...pos.frente(F.escudo.x, L * F.escudo.y), F.escudo.larg * k);
-    let i = Math.floor(L * F.numero.y / f); if (i % 2) i--;   // listras pares são vermelhas
-    const yN = (i + .5) * f;
+    imagem(gF, img.icone, ...pos.frente(F.icone.x, listra('vermelha', F.icone.listra).meio), F.icone.larg * k);
+    imagem(gF, img.escudo, ...pos.frente(F.escudo.x, listra('vermelha', F.escudo.listra).meio), F.escudo.larg * k);
+    const lN = listra('vermelha', F.numero.listra), yN = lN.meio;
     const wN = Math.max(F.numero.quadro, medir(gF, num, F.numero.alt, FONTE_NUM, 800) + .03);
-    quadro('frente', 0, yN, wN, f);
+    quadro('frente', 0, yN, wN, lN.topo - lN.baixo);
     txt('frente', num, 0, yN, F.numero.alt, wN - .02, FONTE_NUM, 800);
 
-    // costas: nome e "Rep. Tumba" centralizados numa listra branca (ímpar), número grande com borda branca
-    const naBranca = y => { let j = Math.floor(y / f); if (j % 2 === 0) j++; return (j + .5) * f; };
-    nomeFixo(nome, naBranca(L * B.nome.y));
-    numeroCostas(num, naBranca(L * B.nome.y) - f);           // meia listra abaixo da faixa do nome
-    const brancaN = n => (2 * n - 1 + .5) * f;        // centro da n-ésima listra branca contando da barra
-    imagem(gC, img.rep, ...pos.costas(0, brancaN(B.rep.brancaDeBaixo)), B.rep.largReal * (ext.escalaReal || 1) * k);
+    // costas: nome e "Rep. Tumba" centralizados em listras brancas, número grande com borda branca
+    nomeFixo(nome, listra('branca', B.nome.listra).meio);
+    numeroCostas(num, naListra(B.numero.inicio), naListra(B.numero.fim));
+    const brancaDeBaixo = n => listra('branca', DESIGN.listras.brancas + 1 - n).meio;   // 1 = a branca mais baixa
+    imagem(gC, img.rep, ...pos.costas(0, brancaDeBaixo(B.rep.brancaDeBaixo)), B.rep.largReal * (ext.escalaReal || 1) * k);
 
     // manga esquerda (vista de fora, pelo lado +x): logo da Unicamp
     const U = DESIGN.manga.unicamp;

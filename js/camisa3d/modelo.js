@@ -9,7 +9,7 @@
    ===================================================================== */
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { DESIGN, COR } from './estampa.js';
+import { DESIGN, COR, limitesListras } from './estampa.js';
 
 /* trama do tecido dry-fit (mapa de normais gerado por código, repetido pelo molde) */
 function trama() {
@@ -42,12 +42,12 @@ export const peca = (u, v) => (v < .056 ? 'gola' : v < .28 ? 'manga' : u < .5 ? 
    convertida para a escala do modelo. O U termina onde acaba o vermelho dos ombros. */
 const GOLA_PECA_VISIVEL = .0091;   // espessura de frente por unidade de esticamento da peça da gola (medida na tela)
 export const GOLA_V = {
-  meia: .088, base: .5, curva: 1.7,                // curva > 1 arredonda o fundo (1 = V reto)
-  fundo: DESIGN.ombro * DESIGN.faixa               // borda de baixo da gola = fim do vermelho dos ombros
+  meia: .088, base: .5, curva: 1.7                 // curva > 1 arredonda o fundo (1 = V reto)
 };
 const perfilGola = t => Math.pow(t, GOLA_V.curva);   // 0 no centro, 1 na lateral do decote
-function golaV(geo, escalaReal) {
-  const p = geo.attributes.position, uv = geo.attributes.uv, { meia, fundo, base } = GOLA_V;
+// fundoDe(bordaY): recebe a altura do recorte da gola com o ombro e devolve onde o U termina
+function golaV(geo, escalaReal, fundoDe) {
+  const p = geo.attributes.position, uv = geo.attributes.uv, { meia, base } = GOLA_V;
   const estica = DESIGN.gola.espessura * escalaReal / GOLA_PECA_VISIVEL;
   const suave = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
@@ -58,7 +58,7 @@ function golaV(geo, escalaReal) {
     if (peca(uv.getX(i), uv.getY(i)) === 'frente' && Math.abs(x) <= (n - .5) * passo) { const b = Math.round(x / passo) + n; decote[b] = Math.max(decote[b], p.getY(i)); }
   }
   const N = x => { const f = x / passo + n, i = Math.max(0, Math.min(2 * n - 1, Math.floor(f))), t = f - i; return decote[i] * (1 - t) + decote[i + 1] * t; };
-  const bordaY = (N(-meia) + N(meia)) / 2;
+  const bordaY = (N(-meia) + N(meia)) / 2, fundo = fundoDe(bordaY);
   const alvo = x => fundo + (bordaY - fundo) * perfilGola(Math.min(1, Math.abs(x) / meia));   // nova linha do U
   // um único campo de deslocamento para o peito e a gola: pontos da costura andam juntos
   const D = (x, y) => (Math.abs(x) >= meia || y <= base ? 0 : Math.min(0, alvo(x) - N(x)) * Math.min(1, (y - base) / (N(x) - base)));
@@ -147,7 +147,8 @@ export async function carregarModelo() {
   const compManga = geo.userData.compManga.reduce((s, v) => s + v, 0) / geo.userData.compManga.length;
   const escalaReal = compManga / DESIGN.real.manga;
   ext.escalaReal = escalaReal;                     // a estampa converte medidas reais com isso
-  golaV(geo, escalaReal);
+  // listras do tronco: do recorte da gola com o ombro até a barra; o U da gola termina no fim da listra do ombro
+  golaV(geo, escalaReal, ombro => { ext.listras = limitesListras(ombro); return ext.listras[ext.listras.length - 1]; });
 
   const material = new THREE.MeshPhysicalMaterial({
     normalMap: trama(), normalScale: new THREE.Vector2(.18, .18),
@@ -172,16 +173,17 @@ void main() {
 }`;
 const FS = `
 uniform sampler2D tFrente, tCostas, tManga;
-uniform vec3 uExt; uniform float uFaixa, uOmbro;
+uniform vec3 uExt;
+uniform float uLim[10];   // limites entre as 11 listras do tronco, da barra para cima
 uniform vec3 uManga;   // fim do punho, da branca e da vermelha (fração da manga, a partir do punho)
 uniform vec3 cBranco, cVermelho, cPreto;
 varying vec3 vP; varying vec2 vUv; varying float vDm;
 vec4 adesivo(sampler2D t, vec2 c) { return (c.x < 0. || c.x > 1. || c.y < 0. || c.y > 1.) ? vec4(0.) : texture2D(t, c); }
 void main() {
   // tronco: listras horizontais (a da barra é vermelha), com borda suavizada
-  float s = vP.y / (2. * uFaixa), w = max(fwidth(s), 1e-4);
-  float verm = 1. - smoothstep(.25 - w, .25 + w, abs(fract(s) - .25));
-  verm = max(verm, smoothstep(uOmbro - w * 2. * uFaixa, uOmbro + w * 2. * uFaixa, vP.y));   // ombros vermelhos
+  // a da barra é vermelha; cada limite alterna a cor (borda suavizada)
+  float w = max(fwidth(vP.y), 1e-5), verm = 1.;
+  for (int i = 0; i < 10; i++) { float t = smoothstep(uLim[i] - w, uLim[i] + w, vP.y); verm += mod(float(i), 2.) < .5 ? -t : t; }
   vec3 c = mix(cBranco, cVermelho, verm);
   bool gola = vUv.y < .056, manga = !gola && vUv.y < .28;
   if (manga) {   // manga, do punho ao ombro: preto, branca, vermelha, branca (paralelas ao punho)
@@ -217,7 +219,7 @@ export function criarForno(renderer, geo, ext, telas, tamanho = 2048) {
     vertexShader: VS, fragmentShader: FS, side: THREE.DoubleSide, depthTest: false, depthWrite: false,
     uniforms: {
       tFrente: { value: tex.frente }, tCostas: { value: tex.costas }, tManga: { value: tex.manga },
-      uExt: { value: new THREE.Vector3(ext.X, ext.L, ext.Z) }, uFaixa: { value: DESIGN.faixa }, uOmbro: { value: DESIGN.ombro * DESIGN.faixa },
+      uExt: { value: new THREE.Vector3(ext.X, ext.L, ext.Z) }, uLim: { value: ext.listras },
       uManga: { value: listrasManga() }, uDesloc: { value: new THREE.Vector2() },
       cBranco: { value: hex(COR.branco) }, cVermelho: { value: hex(COR.vermelho) }, cPreto: { value: hex(COR.preto) }
     }
