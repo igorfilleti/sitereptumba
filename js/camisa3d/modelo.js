@@ -172,7 +172,8 @@ void main() {
   gl_Position = vec4(uv.x * 2. - 1. + uDesloc.x, uv.y * 2. - 1. + uDesloc.y, 0., 1.);
 }`;
 const FS = `
-uniform sampler2D tFrente, tCostas, tManga;
+uniform sampler2D tFrente, tCostas, tManga, tRelevo;
+uniform int uModo;   // 0 = cor; 1 = relevo (altura dos bordados)
 uniform vec3 uExt;
 uniform float uLim[10];   // limites entre as 11 listras do tronco, da barra para cima
 uniform vec3 uManga;   // fim do punho, da branca e da vermelha (fração da manga, a partir do punho)
@@ -196,6 +197,10 @@ void main() {
   else if (manga) { if (vUv.x > .38 && vUv.x < .76) a = adesivo(tManga, vec2((uExt.z - vP.z) / (2. * uExt.z), vP.y / uExt.y)); }
   else if (vUv.x < .5) a = adesivo(tFrente, vec2((vP.x + uExt.x) / (2. * uExt.x), vP.y / uExt.y));
   else a = adesivo(tCostas, vec2((uExt.x - vP.x) / (2. * uExt.x), vP.y / uExt.y));
+  if (uModo == 1) {   // relevo: só os bordados da frente sobem
+    float h = (!gola && !manga && vUv.x < .5) ? adesivo(tRelevo, vec2((vP.x + uExt.x) / (2. * uExt.x), vP.y / uExt.y)).r : 0.;
+    gl_FragColor = vec4(vec3(h), 1.); return;
+  }
   c = mix(c, a.rgb, a.a);
   gl_FragColor = vec4(pow(c, vec3(2.2)), 1.);   // saída linear; o alvo sRGB codifica de volta
 }`;
@@ -212,13 +217,14 @@ export function criarForno(renderer, geo, ext, telas, tamanho = 2048) {
     minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter
   });
   alvo.texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  const relevo = new THREE.WebGLRenderTarget(tamanho, tamanho, { generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter });
   const tex = {};
   for (const [nome, cv] of Object.entries(telas)) { tex[nome] = new THREE.CanvasTexture(cv); tex[nome].minFilter = THREE.LinearFilter; tex[nome].generateMipmaps = false; }
   const hex = h => new THREE.Color().setRGB(...[1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255), THREE.LinearSRGBColorSpace);
   const mat = new THREE.ShaderMaterial({
     vertexShader: VS, fragmentShader: FS, side: THREE.DoubleSide, depthTest: false, depthWrite: false,
     uniforms: {
-      tFrente: { value: tex.frente }, tCostas: { value: tex.costas }, tManga: { value: tex.manga },
+      tFrente: { value: tex.frente }, tCostas: { value: tex.costas }, tManga: { value: tex.manga }, tRelevo: { value: tex.relevo }, uModo: { value: 0 },
       uExt: { value: new THREE.Vector3(ext.X, ext.L, ext.Z) }, uLim: { value: ext.listras },
       uManga: { value: listrasManga() }, uDesloc: { value: new THREE.Vector2() },
       cBranco: { value: hex(COR.branco) }, cVermelho: { value: hex(COR.vermelho) }, cPreto: { value: hex(COR.preto) }
@@ -235,12 +241,14 @@ export function criarForno(renderer, geo, ext, telas, tamanho = 2048) {
   function assar() {
     for (const t of Object.values(tex)) t.needsUpdate = true;
     const antes = renderer.getRenderTarget(), autoClear = renderer.autoClear;
-    renderer.setRenderTarget(alvo);
-    renderer.setClearColor(0xffffff, 1); renderer.clear();
     renderer.autoClear = false;
-    for (const [x, y] of passos) { mat.uniforms.uDesloc.value.set(x, y); renderer.render(cena, cam); }
+    for (const [modo, rt, fundo] of [[0, alvo, 0xffffff], [1, relevo, 0x000000]]) {
+      mat.uniforms.uModo.value = modo;
+      renderer.setRenderTarget(rt); renderer.setClearColor(fundo, 1); renderer.clear();
+      for (const [x, y] of passos) { mat.uniforms.uDesloc.value.set(x, y); renderer.render(cena, cam); }
+    }
     renderer.autoClear = autoClear; renderer.setClearColor(0x000000, 0);
     renderer.setRenderTarget(antes);
   }
-  return { textura: alvo.texture, assar };
+  return { textura: alvo.texture, relevo: relevo.texture, assar };
 }

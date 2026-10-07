@@ -10,6 +10,7 @@ import { carregarModelo, criarForno, ALTURA } from './modelo.js';
 import { criarEstampa } from './estampa.js';
 
 const MOBILE = Math.min(screen.width, screen.height) < 600;
+const RELEVO = 20;                                // força do alto-relevo dos bordados
 const LUZ = { ambiente: .5, principal: 1.75 };   // calibrada: vermelho ≈ rgb(215,35,40), branco ≈ 230 de frente
 const IMAGENS = { escudo: 'escudo.png', rep: 'rep.png', unicamp: 'unicamp.png', icone: 'icone.png' };
 
@@ -75,6 +76,8 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
     modelo = m;
     forno = criarForno(renderer, m.geo, m.ext, estampa.telas, MOBILE ? 1536 : 2048);
     m.material.map = forno.textura;
+    m.material.bumpMap = forno.relevo;                // bordados em alto-relevo
+    m.material.bumpScale = RELEVO;
     camisa = new THREE.Mesh(m.geo, m.material);
     camisa.position.y = -m.ext.L / 2;
     const pivo = new THREE.Group(); pivo.add(camisa); grupo.add(pivo);

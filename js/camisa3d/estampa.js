@@ -26,7 +26,9 @@ export const DESIGN = {
   frente: {
     // listras contadas de cima (a 1ª vermelha é a dos ombros)
     icone:  { x: -.098, listra: 2, larg: .085 },     // na 2ª vermelha
-    escudo: { x: .098,  listra: 2, larg: .07 },
+    // escudo bordado: corpo com contorno branco (0,45 cm real) e 3 estrelas vermelhas, tudo em alto-relevo
+    // o círculo do escudo ocupa 90% da altura da 2ª vermelha, centralizado nela; as estrelas sobem para a branca de cima
+    escudo: { x: .098,  listra: 2, circulo: .9, bordaReal: .0045 },
     numero: { listra: 3, alt: .07, quadro: .095 }    // na 3ª vermelha, num quadro branco da altura da listra
   },
   costas: {
@@ -69,9 +71,49 @@ export function listraDeCima(lim, L, cor, n) {
   return { baixo, topo, meio: (baixo + topo) / 2 };
 }
 
+// círculo preto dentro de assets/img/escudo.png (frações da largura/altura da imagem), medido na imagem
+const CIRCULO_ESCUDO = { cx: .49, cy: .508, diam: .776 };
+
+/* separa as estrelas (peças soltas e pequenas) do corpo do escudo; o resultado fica guardado na imagem */
+function partesEscudo(im) {
+  if (im._partes) return im._partes;
+  const w = im.naturalWidth, h = im.naturalHeight, c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d'); g.drawImage(im, 0, 0);
+  const dados = g.getImageData(0, 0, w, h), d = dados.data, rot = new Int32Array(w * h).fill(-1), tamanhos = [];
+  for (let i = 0; i < w * h; i++) {
+    if (rot[i] >= 0 || d[i * 4 + 3] < 40) continue;
+    const id = tamanhos.length, pilha = [i]; rot[i] = id; let n = 0;
+    while (pilha.length) {
+      const j = pilha.pop(), x = j % w, y = (j / w) | 0; n++;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx, ny = y + dy, q = ny * w + nx;
+        if (nx >= 0 && ny >= 0 && nx < w && ny < h && rot[q] < 0 && d[q * 4 + 3] >= 40) { rot[q] = id; pilha.push(q); }
+      }
+    }
+    tamanhos.push(n);
+  }
+  const maior = tamanhos.indexOf(Math.max(...tamanhos));
+  // estrela = qualquer pixel (inclusive a borda suave) a até 2 px de uma peça que não é a maior
+  const ehEstrela = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) if (rot[i] >= 0 && rot[i] !== maior) {
+    const x = i % w, y = (i / w) | 0;
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const nx = x + dx, ny = y + dy; if (nx >= 0 && ny >= 0 && nx < w && ny < h && rot[ny * w + nx] !== maior) ehEstrela[ny * w + nx] = 1; }
+  }
+  let baseEstrelas = 0;                                     // linha mais baixa das estrelas (fração da altura)
+  for (let i = 0; i < w * h; i++) if (ehEstrela[i] && d[i * 4 + 3] > 128) baseEstrelas = Math.max(baseEstrelas, ((i / w) | 0) / h);
+  const parte = sim => {
+    const out = document.createElement('canvas'); out.width = w; out.height = h;
+    const o = out.getContext('2d'), img = o.createImageData(w, h);
+    for (let i = 0; i < w * h; i++) if (!!ehEstrela[i] === sim) for (let k = 0; k < 4; k++) img.data[i * 4 + k] = d[i * 4 + k];
+    o.putImageData(img, 0, 0); return out;
+  };
+  return (im._partes = { corpo: parte(false), estrelas: parte(true), baseEstrelas });
+}
+
 export function criarEstampa(resolucao = 1024) {
   const tela = () => document.createElement('canvas');
-  const telas = { frente: tela(), costas: tela(), manga: tela() };
+  // relevo: mapa de altura da frente (bordados), em tons de cinza
+  const telas = { frente: tela(), costas: tela(), manga: tela(), relevo: tela() };
 
   /* ext = { X, Z, L }: meia largura, meia profundidade e altura do modelo (m) */
   function desenhar(ext, img, texto) {
@@ -82,6 +124,8 @@ export function criarEstampa(resolucao = 1024) {
     const gF = preparar(telas.frente, resolucao, Math.round(L * k));
     const gC = preparar(telas.costas, resolucao, Math.round(L * k));
     const gM = preparar(telas.manga, resolucao / 2, Math.round(L * km));
+    const gR = preparar(telas.relevo, resolucao, Math.round(L * k));
+    gR.fillStyle = '#000'; gR.fillRect(0, 0, telas.relevo.width, telas.relevo.height);
     const pos = { frente: (x, y) => [(x + X) * k, (L - y) * k], costas: (x, y) => [(X - x) * k, (L - y) * k] };
     const ctxDe = { frente: gF, costas: gC };
 
@@ -159,12 +203,47 @@ export function criarEstampa(resolucao = 1024) {
       pintar(COR.preto, 0);
     };
 
+    // escudo bordado: contorno branco em volta do corpo (as estrelas ficam sem contorno) e relevo
+    // do bordado no mapa de altura (pontos de linha em diagonal, como bordado em cetim)
+    // subir: quanto (px) as estrelas sobem em relação ao desenho original
+    const escudoBordado = (g, gRel, im, cx, cy, larg, borda, subir = 0) => {
+      if (!im) return;
+      const { corpo, estrelas } = partesEscudo(im), s = larg / im.naturalWidth, alt = im.naturalHeight * s;
+      const x0 = cx - larg * CIRCULO_ESCUDO.cx, y0 = cy - alt * CIRCULO_ESCUDO.cy;   // (cx, cy) = centro do círculo
+      const silhueta = cor => { const c = document.createElement('canvas'); c.width = corpo.width; c.height = corpo.height; const t = c.getContext('2d'); t.drawImage(corpo, 0, 0); t.globalCompositeOperation = 'source-in'; t.fillStyle = cor; t.fillRect(0, 0, c.width, c.height); return c; };
+      const contorno = (ctx, sil) => { for (let a = 0; a < 32; a++) for (const r of [borda, borda * .66, borda * .33]) ctx.drawImage(sil, x0 + Math.cos(a / 32 * 2 * Math.PI) * r, y0 + Math.sin(a / 32 * 2 * Math.PI) * r, larg, alt); };
+      contorno(g, silhueta(COR.branco));
+      g.drawImage(corpo, x0, y0, larg, alt);
+      g.drawImage(estrelas, x0, y0 - subir, larg, alt);
+      // relevo: bordado inteiro alto; o contorno, mais alto e com pontos marcados
+      const camada = document.createElement('canvas'); camada.width = gRel.canvas.width; camada.height = gRel.canvas.height;
+      const r = camada.getContext('2d');
+      contorno(r, silhueta('#e6e6e6'));
+      r.drawImage(silhueta('#b4b4b4'), x0, y0, larg, alt);
+      // o desenho interno também tem relevo (cada área bordada sobe um pouco diferente)
+      r.save(); r.globalCompositeOperation = 'source-atop'; r.globalAlpha = .45; r.filter = 'grayscale(1) contrast(1.6)'; r.drawImage(corpo, x0, y0, larg, alt); r.restore();
+      const est = document.createElement('canvas'); est.width = estrelas.width; est.height = estrelas.height;
+      const te = est.getContext('2d'); te.drawImage(estrelas, 0, 0); te.globalCompositeOperation = 'source-in'; te.fillStyle = '#d2d2d2'; te.fillRect(0, 0, est.width, est.height);
+      r.drawImage(est, x0, y0 - subir, larg, alt);
+      r.globalCompositeOperation = 'source-atop'; r.globalAlpha = .55; r.strokeStyle = '#000'; r.lineWidth = Math.max(1, borda * .22);
+      const passo = Math.max(2, borda * .4);
+      r.beginPath(); for (let d = -alt; d < larg + alt; d += passo) { r.moveTo(x0 + d - borda * 2, y0 - borda * 2); r.lineTo(x0 + d - alt - borda * 4, y0 + alt + borda * 2); } r.stroke();
+      gRel.save(); gRel.filter = `blur(${Math.max(.4, borda * .06)}px)`; gRel.drawImage(camada, 0, 0); gRel.restore();
+    };
+
     const num = texto.numero || '10', nome = (texto.nome || 'JOGADOR').toUpperCase();
     const F = DESIGN.frente, B = DESIGN.costas;
 
     // frente: "icone" no peito direito, escudo no esquerdo, número num quadro branco sobre a listra vermelha
     imagem(gF, img.icone, ...pos.frente(F.icone.x, listra('vermelha', F.icone.listra).meio), F.icone.larg * k);
-    imagem(gF, img.escudo, ...pos.frente(F.escudo.x, listra('vermelha', F.escudo.listra).meio), F.escudo.larg * k);
+    const lE = listra('vermelha', F.escudo.listra), largEscudo = F.escudo.circulo * (lE.topo - lE.baixo) / CIRCULO_ESCUDO.diam;
+    // estrelas inteiras na listra branca de cima, com a base 0,4 cm acima da vermelha
+    let subir = 0;
+    if (img.escudo) {
+      const { baseEstrelas } = partesEscudo(img.escudo), altEscudo = largEscudo * img.escudo.naturalHeight / img.escudo.naturalWidth;
+      subir = Math.max(0, lE.topo + .004 - (lE.meio + (CIRCULO_ESCUDO.cy - baseEstrelas) * altEscudo)) * k;
+    }
+    escudoBordado(gF, gR, img.escudo, ...pos.frente(F.escudo.x, lE.meio), largEscudo * k, F.escudo.bordaReal * (ext.escalaReal || 1) * k, subir);
     const lN = listra('vermelha', F.numero.listra), yN = lN.meio;
     const wN = Math.max(F.numero.quadro, medir(gF, num, F.numero.alt, FONTE_NUM, 800) + .03);
     quadro('frente', 0, yN, wN, lN.topo - lN.baixo);
