@@ -6,6 +6,9 @@
    Medidas em metros: y = 0 na barra, x > 0 = lado esquerdo de quem veste.
    ===================================================================== */
 export const COR = { branco: '#f5f5f3', vermelho: '#e3141c', preto: '#111111' };
+// número das costas: Saira Condensed ExtraBold, a mais próxima do "600" da camisa real (traço grosso,
+// 0 de laterais retas com miolo estreito, 6 com braço reto); livre para uso comercial (OFL)
+const FONTE_NUM_COSTAS = '"Saira Condensed","Saira Extra Condensed","Arial Narrow",sans-serif';
 const FONTE_NUM = '"Saira Extra Condensed","Saira Condensed","Arial Narrow",sans-serif';
 // nome: Rajdhani Bold, a mais próxima da camisa real (letras quadradas de cantos arredondados,
 // G com barra reta, A de topo reto, R de perna reta); livre para uso comercial (OFL, Google Fonts)
@@ -26,7 +29,9 @@ export const DESIGN = {
   costas: {
     // nome: padrão fixo da camisa real (cada letra 4,4 × 2,7 cm, 0,7 cm entre letras)
     nome:   { y: .85, altReal: .044, largReal: .027, espacoReal: .007, largMax: .3 },
-    numero: { y: .6,  alt: .23, largMax: .24, quadro: [.2, .24] },
+    // número: padrão da camisa real (dígito 24,85 × 9,4 cm sem a borda, borda branca 0,3 cm, 2,4 cm entre dígitos),
+    // direto sobre as listras; começa meia listra abaixo da faixa do nome. Se não couber, tudo encolhe junto.
+    numero: { altReal: .2485, largReal: .094, bordaReal: .003, espacoReal: .024, largMax: .4 },
     rep:    { brancaDeBaixo: 2, largReal: .277 }     // penúltima listra branca (1 = a mais baixa); 27,7 cm na camisa real
   },
   manga: {
@@ -94,6 +99,34 @@ export function criarEstampa(resolucao = 1024) {
       }
     };
 
+    // número das costas: cada dígito com altura e largura fixas (a do 0 vira a largura padrão; o 1
+    // fica mais estreito), espaço fixo entre os dígitos e borda branca por fora (medidas reais → modelo)
+    const numeroCostas = (str, topo) => {
+      const N = DESIGN.costas.numero, e = ext.escalaReal || 1, g = gC;
+      const alt = N.altReal * e, borda = N.bordaReal * e;
+      g.letterSpacing = '0px'; g.font = `800 100px ${FONTE_NUM_COSTAS}`;
+      const m0 = g.measureText('0'), sy = alt / (m0.actualBoundingBoxAscent + m0.actualBoundingBoxDescent);
+      let sx = N.largReal * e / (m0.actualBoundingBoxLeft + m0.actualBoundingBoxRight), gap = N.espacoReal * e;
+      const dig = [...str].map(c => { const m = g.measureText(c); return { c, esq: m.actualBoundingBoxLeft, larg: m.actualBoundingBoxLeft + m.actualBoundingBoxRight, sobe: m.actualBoundingBoxAscent }; });
+      const total = () => dig.reduce((s, d) => s + d.larg * sx, 0) + gap * (dig.length - 1);
+      if (total() > N.largMax) { const r = N.largMax / total(); sx *= r; gap *= r; }
+      const pintar = (cor, raio) => {                        // raio > 0: borda (o dígito repetido em volta, em branco)
+        let x = total() / 2;
+        g.fillStyle = cor; g.textBaseline = 'alphabetic'; g.textAlign = 'left';
+        for (const d of dig) {
+          const [X0, Y0] = pos.costas(x, topo);                   // canto de cima à esquerda de quem olha
+          const passos = raio ? 24 : 1;
+          for (let a = 0; a < passos; a++) for (const r of raio ? [raio, raio * .5] : [0]) {
+            g.save(); g.translate(X0 + Math.cos(a / passos * 2 * Math.PI) * r, Y0 + Math.sin(a / passos * 2 * Math.PI) * r);
+            g.scale(sx * k, sy * k); g.font = `800 100px ${FONTE_NUM_COSTAS}`; g.fillText(d.c, d.esq, d.sobe); g.restore();
+          }
+          x -= d.larg * sx + gap;
+        }
+      };
+      pintar(COR.branco, borda * k);
+      pintar(COR.preto, 0);
+    };
+
     const num = texto.numero || '10', nome = (texto.nome || 'JOGADOR').toUpperCase();
     const F = DESIGN.frente, B = DESIGN.costas;
 
@@ -106,12 +139,10 @@ export function criarEstampa(resolucao = 1024) {
     quadro('frente', 0, yN, wN, f);
     txt('frente', num, 0, yN, F.numero.alt, wN - .02, FONTE_NUM, 800);
 
-    // costas: nome e "Rep. Tumba" centralizados numa listra branca (ímpar), número grande num quadro branco
+    // costas: nome e "Rep. Tumba" centralizados numa listra branca (ímpar), número grande com borda branca
     const naBranca = y => { let j = Math.floor(y / f); if (j % 2 === 0) j++; return (j + .5) * f; };
     nomeFixo(nome, naBranca(L * B.nome.y));
-    const wB = Math.min(.34, Math.max(B.numero.quadro[0], medir(gC, num, B.numero.alt, FONTE_NUM, 800) + .03));
-    quadro('costas', 0, L * B.numero.y, wB, B.numero.quadro[1]);
-    txt('costas', num, 0, L * B.numero.y, B.numero.alt, num.length > 2 ? wB - .03 : B.numero.largMax, FONTE_NUM, 800);
+    numeroCostas(num, naBranca(L * B.nome.y) - f);           // meia listra abaixo da faixa do nome
     const brancaN = n => (2 * n - 1 + .5) * f;        // centro da n-ésima listra branca contando da barra
     imagem(gC, img.rep, ...pos.costas(0, brancaN(B.rep.brancaDeBaixo)), B.rep.largReal * (ext.escalaReal || 1) * k);
 

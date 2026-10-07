@@ -69,7 +69,7 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
     im.onload = () => { img[k] = im; pedirDesenho(); };
     im.src = new URL(`../../assets/img/${arq}`, import.meta.url).href;
   }
-  if (document.fonts) for (const f of [`800 80px "Saira Extra Condensed"`, `700 80px "Rajdhani"`]) document.fonts.load(f).then(pedirDesenho, () => {});
+  if (document.fonts) for (const f of [`800 80px "Saira Extra Condensed"`, `700 80px "Rajdhani"`, `800 80px "Saira Condensed"`]) document.fonts.load(f).then(pedirDesenho, () => {});
 
   carregarModelo().then(m => {
     modelo = m;
