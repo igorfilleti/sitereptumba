@@ -250,6 +250,13 @@ export function criarEstampa(resolucao = 1024) {
 
     // frente: "icone" no peito direito, escudo no esquerdo, número num quadro branco sobre a listra vermelha
     imagem(gF, img.icone, ...pos.frente(F.icone.x, listra('vermelha', F.icone.listra).meio), F.icone.larg * k);
+    // "icone" é emborrachado: sobe do tecido na mesma altura do contorno do escudo, com superfície lisa
+    if (img.icone) {
+      const im = img.icone, c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight;
+      const t2 = c.getContext('2d'); t2.drawImage(im, 0, 0); t2.globalCompositeOperation = 'source-in'; t2.fillStyle = '#e6e6e6'; t2.fillRect(0, 0, c.width, c.height);
+      const [X0, Y0] = pos.frente(F.icone.x, listra('vermelha', F.icone.listra).meio), w = F.icone.larg * k;
+      gR.save(); gR.filter = 'blur(.5px)'; imagem(gR, c, X0, Y0, w); gR.restore();
+    }
     const lE = listra('vermelha', F.escudo.listra), largEscudo = F.escudo.circulo * (lE.topo - lE.baixo) / CIRCULO_ESCUDO.diam;
     // estrelas inteiras na listra branca de cima, com a base 0,4 cm acima da vermelha
     let subir = 0;
