@@ -298,21 +298,24 @@ form.addEventListener('submit', async e => {
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Enviando…';
   try {
     payload.arquivo = { nome: state.file.name, tipo: state.file.type, base64: await readB64(state.file) };
-    let pedido;
-    if (CONFIG.scriptUrl) {
-      const res = await fetch(CONFIG.scriptUrl, { method: 'POST', body: JSON.stringify(payload) });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.erro || 'Não foi possível registrar o pedido.');
-      pedido = data.pedido;
-    } else {
-      await new Promise(r => setTimeout(r, 900)); pedido = 'DEMO';
-      console.warn('CONFIG.scriptUrl vazio: pedido não foi enviado (modo demonstração).', { ...payload, arquivo: { ...payload.arquivo, base64: '[omitido]' } });
-    }
+    // só confirma o pedido quando a planilha responde que gravou; qualquer falha vira erro na tela
+    if (!CONFIG.scriptUrl) throw new Error('Os pedidos ainda não estão sendo recebidos. Fale com a Rep. Tumba antes de pagar.');
+    const espera = new AbortController(), limite = setTimeout(() => espera.abort(), 45000);
+    let data;
+    try {
+      // corpo em texto simples: o Google aceita sem pedir permissão prévia ao navegador (CORS)
+      const res = await fetch(CONFIG.scriptUrl, { method: 'POST', body: JSON.stringify(payload), signal: espera.signal });
+      data = await res.json();
+    } catch (falha) {
+      throw new Error(falha.name === 'AbortError' ? 'O envio demorou demais. Verifique sua internet e tente de novo.' : 'Falha de conexão. Verifique sua internet e tente de novo.');
+    } finally { clearTimeout(limite); }
+    if (!data || !data.ok || !data.pedido) throw new Error((data && data.erro) || 'Não foi possível registrar o pedido. Tente de novo.');
+    const pedido = data.pedido;
     $('#doneId').textContent = '#' + pedido;
     $('#doneText').textContent = `Valeu, ${payload.apelido}! Vamos conferir o pagamento e chamar você no WhatsApp ${payload.celular}. Guarde o número do pedido.`;
     $('#done').showModal();
   } catch (err) {
-    errBox.textContent = (err && err.message && !/fetch|network/i.test(err.message)) ? err.message : 'Falha de conexão. Verifique sua internet e tente de novo.';
+    errBox.textContent = (err && err.message) || 'Não foi possível registrar o pedido. Tente de novo.';
     errBox.hidden = false;
   } finally {
     btn.disabled = false; btn.textContent = 'Finalizar pedido';

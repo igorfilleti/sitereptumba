@@ -20,6 +20,12 @@ Página de pedido da camisa de jogo da Rep. Tumba: dados, personalização com p
 
 O site usa módulos JavaScript, então não funciona abrindo o `index.html` com dois cliques.
 
+## Receber os pedidos
+
+Os pedidos vão para uma planilha e os comprovantes para uma pasta do seu Google Drive.
+Passo a passo em [apps-script/LEIA-ME.md](apps-script/LEIA-ME.md). Enquanto o endereço do script
+não estiver em `CONFIG.scriptUrl` (js/app.js), o site recusa o envio e avisa a pessoa.
+
 ## Estrutura
 
 ```
@@ -35,6 +41,7 @@ assets/img/             escudo, "Rep. Tumba", Unicamp e "icone"
 assets/models/camisa/   modelo 3D da camisa masculina (camisa.glb: ~15 mil triângulos, normais suavizadas)
 assets/models/feminina/ modelo 3D da baby look (scene.gltf + scene.bin)
 servidor.ps1            servidor local para testes
+apps-script/            script do Google que recebe os pedidos (planilha + comprovantes no Drive)
 ```
 
 ## Créditos
