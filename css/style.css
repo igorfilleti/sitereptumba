@@ -204,6 +204,18 @@ details.table tr.sel td{background:rgba(255,42,54,.14);color:#fff}
     background:linear-gradient(180deg,rgba(8,8,10,.94) 70%,rgba(8,8,10,0))}
   body.editando .viewer{height:var(--ed-alt,40vh)}
   body.editando .viewer .hint,body.editando .viewer-ui .zoom{display:none}
+  body.editando .espelho{display:grid;grid-template-columns:minmax(0,1fr) 108px;gap:8px;margin-top:8px}
+}
+.espelho{display:none}
+.esp{padding:8px 12px 9px;border-radius:12px;border:1px solid var(--line-2);background:var(--field);cursor:text}
+.esp small{display:block;font:600 11px/1.2 var(--cond);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.esp b{display:block;min-height:22px;margin-top:3px;font:700 19px/1.15 var(--cond);letter-spacing:.05em;text-transform:uppercase;color:var(--text);white-space:nowrap;overflow:hidden}
+.esp b:empty::before{content:attr(data-vazio);color:#55555f}
+.esp.ativo{border-color:var(--red-hi);box-shadow:0 0 0 3px rgba(255,42,54,.16)}
+.esp.ativo b::after{content:"";display:inline-block;width:2px;height:18px;margin-left:2px;vertical-align:-2px;background:#fff;animation:cursor 1s steps(1) infinite}
+.esp.ativo b:empty::after{margin-left:-2px}
+@keyframes cursor{50%{opacity:0}}
+@media (max-width:860px){
 }
 
 /* ---------- pagamento ---------- */
