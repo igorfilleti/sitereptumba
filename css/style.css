@@ -49,7 +49,12 @@ a{color:inherit}
 .steps a{position:relative;display:grid;place-items:center;width:44px;height:44px;text-decoration:none;-webkit-tap-highlight-color:transparent}
 .steps .estrela,.sec-num .estrela{position:absolute;inset:0;width:100%;height:100%;fill:#2a2418;stroke:#6b5a2e;stroke-width:1;stroke-linejoin:round;transition:fill .45s,stroke .45s,filter .45s,transform .45s cubic-bezier(.3,1.6,.5,1)}
 .steps a b{position:relative;margin-top:3px;font:400 13px/1 var(--destaque);color:#7d6c45;transition:color .45s}
-.steps a.acesa .estrela{fill:#f2c230;stroke:#ffe48a;filter:drop-shadow(0 0 6px rgba(242,194,48,.55))}
+.steps a.acesa .estrela{fill:#f2c230;stroke:#ffe48a}
+/* brilho: um halo de luz atrás da estrela que se dissolve em todas as direções (a sombra no próprio SVG
+   era recortada num quadrado no Safari do iPhone) */
+.steps a::before,.sec-num::before{content:"";position:absolute;inset:-45%;border-radius:50%;pointer-events:none;opacity:0;transition:opacity .45s;
+  background:radial-gradient(closest-side,rgba(242,194,48,.42),rgba(242,194,48,.16) 45%,rgba(242,194,48,.05) 70%,transparent)}
+.steps a.acesa::before,.sec-num.acesa::before{opacity:1}
 .steps a.acesa b{color:#3b2a00}
 .steps a.on .estrela{transform:scale(1.12)}
 .steps a:hover .estrela{stroke:#ffe48a}
@@ -104,7 +109,7 @@ a{color:inherit}
 /* número de cada etapa: estrela dourada com o número dentro, acende como as do topo */
 .sec-num{position:relative;flex:0 0 auto;display:grid;place-items:center;width:clamp(64px,9vw,92px);aspect-ratio:1;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .sec-num b{position:relative;margin-top:6%;font:400 clamp(19px,2.7vw,27px)/1 var(--destaque);color:#7d6c45;transition:color .45s}
-.sec-num.acesa .estrela{fill:#f2c230;stroke:#ffe48a;filter:drop-shadow(0 0 10px rgba(242,194,48,.5))}
+.sec-num.acesa .estrela{fill:#f2c230;stroke:#ffe48a}
 .sec-num.acesa b{color:#3b2a00}
 .sec-head h2{margin:0;font:400 clamp(21px,3.4vw,31px)/1.08 var(--destaque);text-transform:uppercase;letter-spacing:.01em}
 .sec-head p{margin:6px 0 0;color:var(--muted)}
@@ -277,7 +282,13 @@ dialog.done[open] .done-estrelas .estrela{animation:estrelaAcende .6s cubic-bezi
 dialog.done[open] .done-estrelas .estrela:nth-child(1){animation-delay:.35s}
 dialog.done[open] .done-estrelas .estrela:nth-child(2){animation-delay:.6s}
 dialog.done[open] .done-estrelas .estrela:nth-child(3){animation-delay:.85s}
-@keyframes estrelaAcende{to{fill:#f2c230;stroke:#ffe48a;opacity:1;transform:scale(1);filter:drop-shadow(0 0 10px rgba(242,194,48,.6))}}
+@keyframes estrelaAcende{to{fill:#f2c230;stroke:#ffe48a;opacity:1;transform:scale(1)}}
+.done-estrelas{position:relative}
+.done-estrelas::before{content:"";position:absolute;left:50%;top:50%;width:240px;height:150px;transform:translate(-50%,-50%);pointer-events:none;opacity:0;
+  background:radial-gradient(closest-side,rgba(242,194,48,.38),rgba(242,194,48,.12) 50%,transparent)}
+dialog.done[open] .done-estrelas::before{animation:haloAcende 1s ease .5s forwards}
+@keyframes haloAcende{to{opacity:1}}
+.done-estrelas .estrela{position:relative}
 .done-kicker{margin:0;font:700 13px/1 var(--cond);letter-spacing:.32em;text-transform:uppercase;color:var(--muted)}
 .done-in h2{margin:6px 0 0;font:400 30px/1.05 var(--destaque);text-transform:uppercase}
 .done-in h2 em{display:block;font-style:normal;color:transparent;-webkit-text-stroke:1.5px var(--red-hi);text-shadow:0 0 18px rgba(255,42,54,.45)}
