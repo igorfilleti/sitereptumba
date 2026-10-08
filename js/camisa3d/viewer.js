@@ -313,5 +313,27 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
     if (!pronto) { pronto = true; onPronto(); }
   });
   if (new URLSearchParams(location.search).has('debug')) window.__camisa = { camera, controls, scene, renderer, quadros: () => renderer.info.render.frame, redesenhar, atual: () => ({ estampa, forno, modelo, img, texto }), MOLAS, estadoMola };   // inspeção no console
-  return { setModel, setText, showSide, stopSpin };
+  // foto da camisa vista de trás (nome e número), para a tela de pedido confirmado: gira só a camisa
+  // de costas para a câmera, desenha um quadro, guarda a imagem e volta como estava
+  function foto() {
+    if (!camisa) return null;
+    const antes = grupo.rotation.y;
+    grupo.rotation.y = Math.PI + controls.getAzimuthalAngle();
+    chao.visible = false;                                         // só a camisa, sem a sombra do chão
+    renderer.render(scene, camera);
+    // recorta no contorno da camisa (o resto da tela é transparente), com uma folga
+    const src = renderer.domElement, W = src.width, H = src.height;
+    const t = document.createElement('canvas'); t.width = W; t.height = H;
+    const g = t.getContext('2d'); g.drawImage(src, 0, 0);
+    grupo.rotation.y = antes; chao.visible = true; sujo = true;
+    const a = g.getImageData(0, 0, W, H).data;
+    let x0 = W, y0 = H, x1 = -1, y1 = -1;
+    for (let y = 0; y < H; y += 2) for (let x = 0; x < W; x += 2) if (a[(y * W + x) * 4 + 3] > 20) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    if (x1 < 0) return null;
+    const lado = Math.max(x1 - x0, y1 - y0) * 1.08, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    const out = document.createElement('canvas'); out.width = out.height = Math.min(720, Math.round(lado));
+    out.getContext('2d').drawImage(t, cx - lado / 2, cy - lado / 2, lado, lado, 0, 0, out.width, out.height);
+    return out.toDataURL('image/png');
+  }
+  return { setModel, setText, showSide, stopSpin, foto };
 }

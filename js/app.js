@@ -67,6 +67,7 @@ const Shirt = (() => {
     .catch(falhou);
   const api = {};
   for (const k of ['setModel', 'setText', 'showSide', 'stopSpin']) api[k] = (...a) => chamar(k, a);
+  api.foto = () => (real ? real.foto() : null);   // imagem da camisa de costas (tela de confirmação)
   return api;
 })();
 
@@ -312,8 +313,7 @@ form.addEventListener('submit', async e => {
     if (!data || !data.ok || !data.pedido) throw new Error((data && data.erro) || 'Não foi possível registrar o pedido. Tente de novo.');
     const pedido = data.pedido;
     $('#doneId').textContent = '#' + pedido;
-    $('#doneText').textContent = `Valeu, ${payload.apelido}! Vamos conferir o pagamento e chamar você no WhatsApp ${payload.celular}. Guarde o número do pedido.`;
-    $('#done').showModal();
+    mostrarConfirmacao(payload);
   } catch (err) {
     errBox.textContent = (err && err.message) || 'Não foi possível registrar o pedido. Tente de novo.';
     errBox.hidden = false;
@@ -321,6 +321,48 @@ form.addEventListener('submit', async e => {
     btn.disabled = false; btn.textContent = 'Finalizar pedido';
   }
 });
+/* tela de pedido confirmado: ficha do pedido, foto da camisa (o próprio 3D, de costas) e confete */
+function mostrarConfirmacao(p) {
+  $('#doneText').textContent = `Valeu, ${p.apelido}! Sua listradinha está a caminho.`;
+  $('#doneNome').textContent = p.camisaNome;
+  $('#doneNum').textContent = p.camisaNumero;
+  $('#doneMod').textContent = p.genero === 'Feminino' ? 'Feminina' : 'Masculina';
+  $('#doneTam').textContent = p.tamanho;
+  $('#doneValor').textContent = CONFIG.preco ? brl(CONFIG.preco) : '—';
+  $('#doneZap').textContent = `Chamamos você no WhatsApp ${p.celular} para combinar a entrega.`;
+  const foto = Shirt.foto(), img = $('#doneFoto');
+  if (foto) { img.src = foto; img.hidden = false; }
+  $('#done').showModal();
+  confete($('#confete'));
+}
+// confete nas cores da camisa: vermelho, branco e o dourado das estrelas
+function confete(cv) {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const dpr = Math.min(2, devicePixelRatio || 1), W = innerWidth, H = innerHeight;
+  cv.width = W * dpr; cv.height = H * dpr;
+  const g = cv.getContext('2d'); g.scale(dpr, dpr);
+  const cores = ['#e30613', '#ff2a36', '#f4f4f4', '#f2c230', '#ffffff'];
+  const pecas = Array.from({ length: Math.min(160, Math.round(W / 4)) }, () => ({
+    x: Math.random() * W, y: -20 - Math.random() * H * .6, vx: (Math.random() - .5) * 2.4, vy: 2 + Math.random() * 3.5,
+    a: Math.random() * 6.3, va: (Math.random() - .5) * .3, w: 6 + Math.random() * 6, h: 8 + Math.random() * 10,
+    cor: cores[Math.floor(Math.random() * cores.length)], estrela: Math.random() < .12
+  }));
+  const estrela = (r) => { g.beginPath(); for (let i = 0; i < 10; i++) { const q = i % 2 ? r * .45 : r, t = i * Math.PI / 5 - Math.PI / 2; g.lineTo(Math.cos(t) * q, Math.sin(t) * q); } g.fill(); };
+  const t0 = performance.now();
+  (function quadro(t) {
+    const vida = (t - t0) / 1000;
+    g.clearRect(0, 0, W, H);
+    for (const p of pecas) {
+      p.x += p.vx + Math.sin(vida * 2 + p.a) * .6; p.y += p.vy; p.a += p.va;
+      g.save(); g.translate(p.x, p.y); g.rotate(p.a); g.globalAlpha = Math.max(0, Math.min(1, 4.2 - vida));
+      g.fillStyle = p.cor;
+      if (p.estrela) { g.fillStyle = '#f2c230'; estrela(p.w * .9); } else g.fillRect(-p.w / 2, -p.h / 2, p.w, p.h * Math.abs(Math.cos(p.a * 2)));
+      g.restore();
+    }
+    if (vida < 4.3) requestAnimationFrame(quadro); else g.clearRect(0, 0, W, H);
+  })(t0);
+}
+
 $('#doneBtn').addEventListener('click', () => {
   $('#done').close(); form.reset(); location.hash = ''; location.reload();
 });

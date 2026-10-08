@@ -237,11 +237,6 @@ details.table tr.sel td{background:rgba(255,42,54,.14);color:#fff}
 /* ---------- sucesso ---------- */
 dialog{width:min(460px,calc(100% - 32px));padding:0;border:1px solid var(--line-2);border-radius:20px;background:#111115;color:var(--text);box-shadow:0 40px 120px rgba(0,0,0,.7)}
 dialog::backdrop{background:rgba(0,0,0,.72);backdrop-filter:blur(6px)}
-.done-in{padding:30px 24px 24px;text-align:center}
-.done-ico{display:grid;place-items:center;width:68px;height:68px;margin:0 auto 14px;border-radius:50%;background:rgba(43,212,106,.12);color:var(--ok)}
-.done-in h2{margin:0;font:900 40px/1 var(--display);text-transform:uppercase}
-.done-id{display:inline-block;margin:12px 0 4px;padding:8px 14px;border-radius:10px;background:rgba(255,255,255,.06);font:800 26px/1 var(--display);letter-spacing:.06em;color:var(--red-hi)}
-.done-in p{color:var(--muted);margin:10px 0 22px}
 
 footer{padding:36px 0 48px;color:var(--dim);font-size:14px;text-align:center}
 footer b{font-family:var(--cond);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
@@ -254,3 +249,56 @@ footer .credito{display:block;margin-top:8px;font-size:12px;color:var(--dim)}
 /* toque na estrela: um giro de 360° */
 @keyframes giroEstrela{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 .gira .estrela{animation:giroEstrela .6s cubic-bezier(.3,.9,.4,1)}
+
+/* ===== pedido confirmado ===== */
+/* a tela inteira é o diálogo (transparente, rola se precisar); o cartão fica no meio e o confete cai por cima de tudo */
+dialog.done{width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:24px 12px;border:0;border-radius:0;background:transparent;box-shadow:none;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain}
+dialog.done[open]{display:grid}
+.done-card{position:relative;width:min(520px,100%);margin:auto;border:1px solid rgba(242,194,48,.28);border-radius:20px;background:#111115;box-shadow:0 40px 120px rgba(0,0,0,.7);overflow:hidden}
+dialog.done[open] .done-card{animation:doneEntra .55s cubic-bezier(.2,1.2,.4,1) both}
+@keyframes doneEntra{from{opacity:0;transform:translateY(24px) scale(.94)}}
+.confete{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
+/* faixa de listras da camisa no topo, deslizando devagar */
+.done-faixa{height:54px;background:repeating-linear-gradient(180deg,var(--red) 0 12px,#f4f4f4 12px 23px);background-size:100% 46px;
+  -webkit-mask:linear-gradient(#000,transparent);mask:linear-gradient(#000,transparent);animation:faixaDesce 6s linear infinite;opacity:.9}
+@keyframes faixaDesce{to{background-position:0 46px}}
+.done-in{position:relative;z-index:1;padding:0 24px 24px;margin-top:-26px;text-align:center}
+.done-estrelas{display:flex;justify-content:center;gap:10px;margin-bottom:10px}
+.done-estrelas .estrela{width:44px;height:44px;fill:#2a2418;stroke:#6b5a2e;stroke-width:1;stroke-linejoin:round;transform:scale(.6);opacity:.4}
+.done-estrelas .estrela:nth-child(2){width:56px;height:56px;margin-top:-8px}
+dialog.done[open] .done-estrelas .estrela{animation:estrelaAcende .6s cubic-bezier(.3,1.7,.5,1) forwards}
+dialog.done[open] .done-estrelas .estrela:nth-child(1){animation-delay:.35s}
+dialog.done[open] .done-estrelas .estrela:nth-child(2){animation-delay:.6s}
+dialog.done[open] .done-estrelas .estrela:nth-child(3){animation-delay:.85s}
+@keyframes estrelaAcende{to{fill:#f2c230;stroke:#ffe48a;opacity:1;transform:scale(1);filter:drop-shadow(0 0 10px rgba(242,194,48,.6))}}
+.done-kicker{margin:0;font:700 13px/1 var(--cond);letter-spacing:.32em;text-transform:uppercase;color:var(--muted)}
+.done-in h2{margin:6px 0 0;font:900 46px/.95 var(--display);text-transform:uppercase}
+.done-in h2 em{display:block;font-style:normal;color:transparent;-webkit-text-stroke:1.5px var(--red-hi);text-shadow:0 0 18px rgba(255,42,54,.45)}
+.done-id{display:inline-block;margin:14px 0 2px;padding:9px 18px;border:1px solid rgba(242,194,48,.35);border-radius:12px;background:rgba(242,194,48,.08);
+  font:800 30px/1 var(--display);letter-spacing:.08em;color:#f2c230}
+.done-oi{color:var(--text);margin:12px 0 18px;font-size:16px}
+/* camisa + ficha, lado a lado (empilha no celular estreito) */
+.done-camisa{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:center;padding:14px;border:1px solid var(--line);border-radius:16px;
+  background:radial-gradient(120% 90% at 30% 20%,rgba(227,6,19,.16),transparent 60%),rgba(255,255,255,.03);text-align:left}
+.done-camisa img{width:100%;aspect-ratio:1;object-fit:contain;filter:drop-shadow(0 14px 18px rgba(0,0,0,.55))}
+.done-camisa img[hidden]+.done-ficha{grid-column:1/-1}
+.done-ficha{margin:0;display:grid;gap:8px}
+.done-ficha div{display:flex;justify-content:space-between;gap:10px;padding-bottom:8px;border-bottom:1px dashed var(--line)}
+.done-ficha div:last-child{border:0;padding:0}
+.done-ficha dt{color:var(--muted);font:600 12px/1.6 var(--cond);letter-spacing:.12em;text-transform:uppercase}
+.done-ficha dd{margin:0;font:800 18px/1.2 var(--display);letter-spacing:.04em;text-align:right;overflow-wrap:anywhere}
+/* próximos passos */
+.done-passos{list-style:none;margin:18px 0 0;padding:0;text-align:left;counter-reset:p}
+.done-passos li{position:relative;padding:0 0 14px 40px;counter-increment:p}
+.done-passos li::before{content:counter(p);position:absolute;left:0;top:0;width:26px;height:26px;display:grid;place-items:center;border-radius:50%;
+  border:1px solid var(--line-2);color:var(--muted);font:800 14px/1 var(--display)}
+.done-passos li:not(:last-child)::after{content:"";position:absolute;left:13px;top:30px;bottom:2px;width:1px;background:var(--line-2)}
+.done-passos li.feito::before{content:"✓";background:var(--ok);border-color:var(--ok);color:#06140b}
+.done-passos li.agora::before{border-color:#f2c230;color:#f2c230;box-shadow:0 0 0 0 rgba(242,194,48,.5);animation:pulsa 1.8s ease-out infinite}
+@keyframes pulsa{70%{box-shadow:0 0 0 9px rgba(242,194,48,0)}100%{box-shadow:0 0 0 0 rgba(242,194,48,0)}}
+.done-passos b{display:block;font:700 16px/1.3 var(--cond);letter-spacing:.04em;text-transform:uppercase}
+.done-passos span{display:block;color:var(--muted);font-size:14px}
+.done-guarde{color:var(--dim);font-size:13px;margin:6px 0 16px}
+@media (max-width:420px){.done-camisa{grid-template-columns:1fr}.done-camisa img{max-width:220px;margin:0 auto}.done-in h2{font-size:40px}}
+@media (prefers-reduced-motion:reduce){dialog.done[open] .done-card,.done-faixa,.done-passos li.agora::before{animation:none}
+  dialog.done[open] .done-estrelas .estrela{animation-duration:.01s;animation-delay:0s!important}}
