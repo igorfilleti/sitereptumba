@@ -60,7 +60,7 @@ const Shirt = (() => {
     console.error('Camisa 3D:', err);
     msg.textContent = 'Não foi possível abrir a visualização 3D, mas você pode continuar o pedido normalmente.';
   };
-  import('./camisa3d/viewer.js?v=20261008d')
+  import('./camisa3d/viewer.js?v=20261008e')
     .then(m => {
       real = m.createShirt($('#shirt3d'), { onPronto: () => { msg.hidden = true; }, onErro: falhou });
       for (const [k, a] of Object.entries(fila)) real[k](...a);
@@ -130,7 +130,7 @@ $$('[data-copy]').forEach(b => b.addEventListener('click', async () => {
    FORMULÁRIO
    ===================================================================== */
 const el = {
-  nome: $('#nome'), apelido: $('#apelido'), celular: $('#celular'),
+  nome: $('#nome'), apelido: $('#apelido'), celular: $('#celular'), email: $('#email'),
   camisaNome: $('#camisaNome'), camisaNumero: $('#camisaNumero'),
   file: $('#comprovante')
 };
@@ -141,6 +141,7 @@ const RULES = {
   nome: v => (v.trim().split(/\s+/).length >= 2 && v.trim().length >= 5) || 'Informe nome e sobrenome.',
   apelido: v => v.trim().length >= 2 || 'Informe seu apelido.',
   celular: v => v.replace(/\D/g, '').length === 11 || 'Informe o celular com DDD (11 dígitos).',
+  email: v => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim()) || 'Informe um e-mail válido.',
   camisaNome: v => v.trim().length >= 1 || 'Digite o nome que vai nas costas.',
   camisaNumero: v => NUMERO_OK.test(v) || 'Digite o número ou letras (1 a 4 caracteres).'
 };
@@ -157,7 +158,7 @@ function checkGenero() { const ok = !!state.genero; setMsg($('#fsGenero'), ok ? 
 function checkTamanho() { const ok = state.idx >= 0; setMsg($('#fsTamanho'), ok ? '' : 'Escolha o tamanho.'); return ok ? null : $('#sizes input'); }
 function checkFile() { const ok = !!state.file; setMsg($('#fComp'), ok ? '' : 'Anexe o comprovante do Pix.'); return ok ? null : el.file; }
 const SECTIONS = {
-  dados: () => ['nome', 'apelido', 'celular'].map(checkInput),
+  dados: () => ['nome', 'apelido', 'celular', 'email'].map(checkInput),
   camisa: () => [checkInput('camisaNome'), checkInput('camisaNumero'), checkGenero(), checkTamanho()],
   pagamento: () => [checkFile()]
 };
@@ -267,6 +268,7 @@ function updateSummary() {
     row('Nome', el.nome.value.trim()) +
     row('Apelido', el.apelido.value.trim()) +
     row('Celular', el.celular.value) +
+    row('E-mail', el.email.value.trim()) +
     row('Nas costas', state.nome && state.numero ? `${state.nome} · ${state.numero}` : '') +
     row('Modelagem', state.genero && s ? `${state.genero === 'Feminino' ? 'Feminina' : 'Masculina'} · ${s}` : '') +
     row('Comprovante', state.file ? 'anexado' : '') +
@@ -309,7 +311,7 @@ form.addEventListener('submit', async e => {
   const bad = ['dados', 'camisa', 'pagamento'].map(firstBad).find(Boolean);
   if (bad) return focusBad(bad);
   const payload = {
-    nome: el.nome.value.trim(), apelido: el.apelido.value.trim(), celular: el.celular.value,
+    nome: el.nome.value.trim(), apelido: el.apelido.value.trim(), celular: el.celular.value, email: el.email.value.trim().toLowerCase(),
     camisaNome: state.nome, camisaNumero: state.numero,
     genero: state.genero, tamanho: TAMANHOS[gKey()][state.idx].t,
     pagamento: textoPagamento(state.pagamento)
