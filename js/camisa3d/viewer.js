@@ -185,12 +185,12 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
   // roda do mouse (e pinça do touchpad) sobre a camisa: zoom, sem rolar a página
   // aproximando, o ponto embaixo do cursor fica parado; afastando, volta a centralizar (centrada no zoom inicial)
   const raio = new THREE.Raycaster(), ndc = new THREE.Vector2(), plano = new THREE.Plane(), ponto = new THREE.Vector3();
-  canvas.addEventListener('wheel', e => {
-    if (e.deltaY > 0 && zoomAlvo >= ZOOM.max - 1e-6) return;     // já toda afastada: a roda volta a rolar a página
-    e.preventDefault();
+  // fator < 1 aproxima, mirando o ponto da tela (x, y); > 1 afasta (roda do mouse e pinça no celular)
+  function zoomEm(fator, x, y) {
     const antes = zoomAlvo;
-    zoomPara(zoomAlvo * Math.exp(e.deltaY * (e.ctrlKey ? .01 : .0015)));
+    zoomPara(zoomAlvo * fator);
     if (zoomAlvo === antes) return;
+    const e = { clientX: x, clientY: y };
     if (zoomAlvo < antes) {
       const r = canvas.getBoundingClientRect();
       ndc.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1);
@@ -204,7 +204,25 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
       alvoFoco.sub(centro).multiplyScalar(antes < 1 ? Math.max(0, (1 - zoomAlvo) / (1 - antes)) : 0).add(centro);
     }
     if (modelo) alvoFoco.set(Math.max(-modelo.ext.X, Math.min(modelo.ext.X, alvoFoco.x)), Math.max(-modelo.ext.L / 2, Math.min(modelo.ext.L / 2, alvoFoco.y)), Math.max(-modelo.ext.Z, Math.min(modelo.ext.Z, alvoFoco.z)));
+  }
+  canvas.addEventListener('wheel', e => {
+    if (e.deltaY > 0 && zoomAlvo >= ZOOM.max - 1e-6) return;     // já toda afastada: a roda volta a rolar a página
+    e.preventDefault();
+    zoomEm(Math.exp(e.deltaY * (e.ctrlKey ? .01 : .0015)), e.clientX, e.clientY);
   }, { passive: false });
+  // pinça com dois dedos (celular): zoom no ponto entre os dedos. Um dedo continua girando a camisa,
+  // e arrastar na vertical continua rolando a página
+  let pinca = 0;
+  const distDedos = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  canvas.addEventListener('touchstart', e => { if (e.touches.length === 2) { pinca = distDedos(e.touches); controls.autoRotate = false; esconderDica(); } }, { passive: true });
+  canvas.addEventListener('touchmove', e => {
+    if (e.touches.length !== 2 || !pinca) return;
+    e.preventDefault();                                          // a pinça é da camisa, não da página
+    const d = distDedos(e.touches);
+    if (d > 0) zoomEm(pinca / d, (e.touches[0].clientX + e.touches[1].clientX) / 2, (e.touches[0].clientY + e.touches[1].clientY) / 2);
+    pinca = d;
+  }, { passive: false });
+  canvas.addEventListener('touchend', e => { if (e.touches.length < 2) pinca = 0; });
   // voltar à visão inicial (botão discreto que só aparece quando a visão mudou)
   const botaoInicio = document.querySelector('[data-reset]');
   function visaoInicial() { controls.autoRotate = false; alvoAz = 0; zoomAlvo = 1; alvoFoco.copy(centro); }
