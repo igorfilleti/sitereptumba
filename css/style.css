@@ -199,6 +199,11 @@ details.table tr.sel td{background:rgba(255,42,54,.14);color:#fff}
   .custom{grid-template-columns:1fr;gap:14px}
   .viewer-col{top:60px;z-index:5}   /* sem fundo próprio: o cartão da camisa já cobre o que rola por baixo, e a estampa do fundo continua nas laterais */
   .viewer{aspect-ratio:auto;height:min(46svh,440px)}
+  /* modo edição (digitando nome/número): camisa presa no topo da parte visível, acima do teclado */
+  body.editando .viewer-col{position:fixed;top:var(--ed-topo,0px);left:0;right:0;z-index:30;padding:8px 10px;
+    background:linear-gradient(180deg,rgba(8,8,10,.94) 70%,rgba(8,8,10,0))}
+  body.editando .viewer{height:var(--ed-alt,40vh)}
+  body.editando .viewer .hint,body.editando .viewer-ui .zoom{display:none}
 }
 
 /* ---------- pagamento ---------- */
@@ -292,8 +297,6 @@ dialog.done[open] .done-estrelas::before{animation:haloAcende 1s ease .5s forwar
 .done-kicker{margin:0;font:700 13px/1 var(--cond);letter-spacing:.32em;text-transform:uppercase;color:var(--muted)}
 .done-in h2{margin:6px 0 0;font:400 30px/1.05 var(--destaque);text-transform:uppercase}
 .done-in h2 em{display:block;font-style:normal;color:transparent;-webkit-text-stroke:1.5px var(--red-hi);text-shadow:0 0 18px rgba(255,42,54,.45)}
-.done-id{display:inline-block;margin:14px 0 2px;padding:9px 18px;border:1px solid rgba(242,194,48,.35);border-radius:12px;background:rgba(242,194,48,.08);
-  font:400 22px/1 var(--destaque);letter-spacing:.08em;color:#f2c230}
 .done-oi{color:var(--text);margin:12px 0 18px;font-size:16px}
 /* camisa + ficha, lado a lado (empilha no celular estreito) */
 .done-camisa{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:center;padding:14px;border:1px solid var(--line);border-radius:16px;

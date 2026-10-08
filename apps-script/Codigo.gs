@@ -104,7 +104,7 @@ function enviarConfirmacao(p, numero, data) {
   MailApp.sendEmail({
     to: para,
     name: 'Rep. Tumba',
-    subject: 'Pedido #' + numero + ' confirmado: sua listradinha já está em produção',
+    subject: 'Pedido confirmado: sua listradinha já está em produção',
     htmlBody: htmlConfirmacao(p, numero, data, foto),
     body: textoConfirmacao(p, numero),
     inlineImages: inline
@@ -117,7 +117,7 @@ function esc(v) {
 
 // versão só texto, para quem não abre HTML
 function textoConfirmacao(p, numero) {
-  return 'Valeu, ' + p.apelido + '!\n\nPedido #' + numero + ' confirmado. Sua listradinha já está em produção.\n\n' +
+  return 'Valeu, ' + p.apelido + '!\n\nPedido confirmado. Sua listradinha já está em produção.\n\n' +
     'Nome: ' + p.camisaNome + '\nNúmero: ' + p.camisaNumero + '\nModelo: ' + (p.genero === 'Feminino' ? 'Feminina' : 'Masculina') +
     '\nTamanho: ' + p.tamanho + '\nValor: ' + (p.pagamento || '') +
     '\n\nVamos conferir o pagamento e chamar você no WhatsApp ' + p.celular + '.\n\nRep. Tumba\n' + SITE;
@@ -148,7 +148,6 @@ function htmlConfirmacao(p, numero, data, foto) {
       estrela(26) + '&nbsp;' + estrela(34) + '&nbsp;' + estrela(26) +
       '<div style="margin-top:12px;font:bold 12px ' + fonte + ';letter-spacing:5px;color:#8a8a94">REP. TUMBA</div>' +
       '<div style="margin-top:6px;font:900 34px/1.05 \'Arial Black\',' + fonte + ';color:#ffffff;text-transform:uppercase">Pedido<br><span style="color:#ff2a36">confirmado</span></div>' +
-      '<div style="display:inline-block;margin-top:16px;padding:9px 18px;border:1px solid #6b5a2e;border-radius:12px;background:#1c1810;font:bold 26px ' + fonte + ';letter-spacing:3px;color:#f2c230">#' + numero + '</div>' +
       '<p style="margin:16px 0 0;font:16px/1.5 ' + fonte + ';color:#f5f5f6">Valeu, <b>' + esc(p.apelido) + '</b>! Sua listradinha já está em produção.</p>' +
     '</td></tr>' +
     '<tr><td style="padding:18px 24px 0">' +
@@ -163,7 +162,7 @@ function htmlConfirmacao(p, numero, data, foto) {
     (parcelado ? '<tr><td style="padding:14px 24px 0"><div style="padding:12px 14px;border:1px solid #5c4c1c;border-radius:10px;background:#1c1810;font:14px/1.5 ' + fonte + ';color:#f5f5f6">Você pagou a <b>1ª parcela</b>. A 2ª a gente combina com você pelo WhatsApp.</div></td></tr>' : '') +
     '<tr><td style="padding:18px 24px 0;font:14px/1.6 ' + fonte + ';color:#c9c9d1">' +
       'Agora vamos conferir o pagamento e chamar você no WhatsApp <b style="color:#f5f5f6">' + esc(p.celular) + '</b>. ' +
-      'Se precisar falar com a gente, é só responder este e-mail informando o número do pedido.' +
+      'Se precisar falar com a gente, é só responder este e-mail.' +
     '</td></tr>' +
     '<tr><td align="center" style="padding:22px 24px 26px">' +
       '<a href="' + SITE + '" style="display:inline-block;padding:14px 26px;background:#e30613;border-radius:6px;font:bold 14px ' + fonte + ';letter-spacing:2px;color:#ffffff;text-decoration:none;text-transform:uppercase">Ver o site</a>' +
