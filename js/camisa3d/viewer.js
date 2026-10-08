@@ -7,8 +7,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.min.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.min.js';
-import { carregarModelo, criarForno, referencia, BALANCO } from './modelo.js?v=20261008';
-import { criarEstampa } from './estampa.js?v=20261008';
+import { carregarModelo, criarForno, referencia, BALANCO } from './modelo.js?v=20261008b';
+import { criarEstampa } from './estampa.js?v=20261008b';
 
 const MOBILE = Math.min(screen.width, screen.height) < 600;
 const RELEVO = 20;                                // força do alto-relevo dos bordados
@@ -254,7 +254,7 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
   new ResizeObserver(ajustarCamera).observe(canvas);
 
   /* ---------- loop ---------- */
-  let visivel = true, ultimo = performance.now(), ultimaFace = '', pronto = false;
+  let visivel = true, ultimoQuadro = 0, ultimo = performance.now(), ultimaFace = '', pronto = false;
   new IntersectionObserver(es => { visivel = es[0].isIntersecting; sujo = true; }).observe(canvas);
   const botoes = [...document.querySelectorAll('[data-side]')];
   const offset = new THREE.Vector3(), sph = new THREE.Spherical();
@@ -336,6 +336,12 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
 
     // só desenha quando algo mudou; parada, a cena não gasta nada
     if (!(sujo || controlesMudaram || molaAtiva || escalaMudando || zoomMudando || focoMudando || virando || controls.autoRotate)) return;
+    // só o giro de descanso (lento) mexendo: 30 quadros/s bastam e gastam metade da bateria
+    // (no giro o pano fica numa torção leve e constante; conta como mexendo só se estiver balançando)
+    const panoBalancando = Object.keys(MOLAS).some(k => Math.abs(estadoMola[k][1]) > MOLAS[k].max * 2e-2);
+    const soGirando = !arrastando && !(sujo || panoBalancando || escalaMudando || zoomMudando || focoMudando || virando);
+    if (soGirando && agora - ultimoQuadro < 1000 / 30 - 2) return;
+    ultimoQuadro = agora;
     sujo = false;
     renderer.render(scene, camera);
 
