@@ -33,6 +33,10 @@ a{color:inherit}
 .bg i:nth-child(2){top:22%;opacity:.25;height:1px}
 .bg i:nth-child(3){top:84%;opacity:.35}
 .bg::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(-23deg,transparent 0 120px,rgba(255,255,255,.012) 120px 240px)}
+/* estampa de caveiras da Tumba: só o traço (máscara), pintado de vermelho bem apagado, cobrindo todo o fundo */
+.bg::before{content:"";position:absolute;inset:0;background:#d0121e;opacity:.23;
+  -webkit-mask:url(../assets/img/caveiras.webp) 0 0/760px auto repeat;mask:url(../assets/img/caveiras.webp) 0 0/760px auto repeat}
+@media (max-width:600px){.bg::before{-webkit-mask-size:520px auto;mask-size:520px auto}}
 
 /* ---------- topo ---------- */
 .top{position:sticky;top:0;z-index:20;background:rgba(10,10,12,.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
