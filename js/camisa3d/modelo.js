@@ -313,9 +313,11 @@ function prepararFeminina(geo, ext, perfil) {
       let ponta = null;
       for (const i of ids) if (Math.abs(sx * p.getX(i) - xCava) < .01 && (ponta === null || p.getY(i) > p.getY(ponta))) ponta = i;
       comp = proj(pos(ponta)) - ini;
-      for (const i of ids) pc[i] = proj(pos(i)) - ini < comp ? 1 : p.getZ(i) > 0 ? 2 : 3;
+      // manga: dentro da volta do braço e para fora da linha vertical do ombro (a listra da gola vai até ela)
+      for (const i of ids) pc[i] = proj(pos(i)) - ini < comp && sx * p.getX(i) >= xCava ? 1 : p.getZ(i) > 0 ? 2 : 3;
       // o forno traça essa costura por posição (linha limpa, sem degraus dos triângulos)
       (ext.costuras ||= {})[lado] = [...u, u[0] * A[0] + u[1] * A[1] + u[2] * A[2] + ini + comp];
+      (ext.cavaX ||= {})[lado] = xCava;
     } else {
       // como na baby look: a fração vai da boca ao ponto da manga mais longe dela (alto da cava)
       let fim = -1e9; for (const i of ids) if (pc[i] === 1) fim = Math.max(fim, proj(pos(i)));
@@ -431,7 +433,8 @@ uniform sampler2D tFrente, tCostas, tManga, tRelevo, tBrilho;
 uniform int uModo;   // 0 = cor; 1 = relevo (altura dos bordados); 2 = rugosidade (borracha mais lisa)
 uniform vec3 uExt;
 uniform float uGolaFaixa, uCava;   // uCava > 0: costura da manga traçada pelos planos uCostE/uCostD
-uniform vec4 uCostE, uCostD;      // normal (do punho para o corpo) e posição da costura   // espessura da faixa preta da gola (em aGola)
+uniform vec4 uCostE, uCostD;      // normal (do punho para o corpo) e posição da costura
+uniform vec2 uCavaX;              // linha vertical do ombro (|x|), esquerda e direita   // espessura da faixa preta da gola (em aGola)
 uniform vec2 uMangaWH;
 uniform float uLim[10];   // limites entre as 11 listras do tronco, da barra para cima
 uniform vec3 uManga;   // fim do punho, da branca e da vermelha (fração da manga, a partir do punho)
@@ -445,7 +448,7 @@ void main() {
   for (int i = 0; i < 10; i++) { float t = smoothstep(uLim[i] - w, uLim[i] + w, vY); verm += mod(float(i), 2.) < .5 ? -t : t; }
   vec3 c = mix(cBranco, cVermelho, verm);
   bool manga = vPeca > .5 && vPeca < 1.5, frente = vPeca > 1.5 && vPeca < 2.5;
-  if (uCava > 0. && manga) { vec4 cs = vP.x > 0. ? uCostE : uCostD; manga = dot(vP, cs.xyz) < cs.w; frente = !manga && vP.z > 0.; }
+  if (uCava > 0. && manga) { vec4 cs = vP.x > 0. ? uCostE : uCostD; manga = dot(vP, cs.xyz) < cs.w && abs(vP.x) >= (vP.x > 0. ? uCavaX.x : uCavaX.y); frente = !manga && vP.z > 0.; }
   float wg = max(fwidth(vGola), 1e-5), gola = vPeca < .5 ? 1. : 1. - smoothstep(uGolaFaixa - wg, uGolaFaixa + wg, vGola);
   if (manga) {   // manga, do punho ao ombro: preto, branca, vermelha, branca (paralelas ao punho)
     float wm = max(fwidth(vDm), 1e-4);
@@ -495,7 +498,7 @@ export function criarForno(renderer, geo, ext, telas, tamanho = 2048) {
       tFrente: { value: tex.frente }, tCostas: { value: tex.costas }, tManga: { value: tex.manga }, tRelevo: { value: tex.relevo }, tBrilho: { value: tex.brilho }, uModo: { value: 0 },
       uExt: { value: new THREE.Vector3(ext.X, ext.L, ext.Z) }, uLim: { value: ext.listras },
       uManga: { value: listrasManga() }, uDesloc: { value: new THREE.Vector2() },
-      uGolaFaixa: { value: ext.golaFaixa }, uCava: { value: ext.costuras ? 1 : 0 }, uCostE: { value: new THREE.Vector4(...(ext.costuras?.mangaE || [0, 0, 0, 0])) }, uCostD: { value: new THREE.Vector4(...(ext.costuras?.mangaD || [0, 0, 0, 0])) }, uMangaWH: { value: new THREE.Vector2(ext.manga.W, ext.manga.H) },
+      uGolaFaixa: { value: ext.golaFaixa }, uCava: { value: ext.costuras ? 1 : 0 }, uCavaX: { value: new THREE.Vector2(ext.cavaX?.mangaE || 0, ext.cavaX?.mangaD || 0) }, uCostE: { value: new THREE.Vector4(...(ext.costuras?.mangaE || [0, 0, 0, 0])) }, uCostD: { value: new THREE.Vector4(...(ext.costuras?.mangaD || [0, 0, 0, 0])) }, uMangaWH: { value: new THREE.Vector2(ext.manga.W, ext.manga.H) },
       cBranco: { value: hex(COR.branco) }, cVermelho: { value: hex(COR.vermelho) }, cPreto: { value: hex(COR.preto) }
     }
   });
