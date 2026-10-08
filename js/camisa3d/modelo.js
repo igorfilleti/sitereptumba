@@ -30,10 +30,10 @@ function trama() {
   return t;
 }
 
-// camisa.gltf: só a camisa, compactada (normais em 8 bits, molde e índices em 16 bits: KHR_mesh_quantization).
+// camisa.glb: só a camisa, simplificada para ~15 mil triângulos (gltf-transform/meshoptimizer) e compactada.
 // As normais foram suavizadas (60 passadas, fora do site): a luz vê um tecido liso, sem as dobras do
 // modelo original, e o formato do tronco fica intacto (nenhum ponto da malha mudou de lugar).
-const URL_MODELO = new URL('../../assets/models/camisa/camisa.gltf', import.meta.url).href;
+const URL_MODELO = new URL('../../assets/models/camisa/camisa.glb', import.meta.url).href;
 const GIRO = -170 * Math.PI / 180;      // o arquivo vem girado; assim a frente fica para +z
 export const ALTURA = .74;              // comprimento do tamanho M de referência (m)
 
