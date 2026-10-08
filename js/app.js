@@ -60,7 +60,7 @@ const Shirt = (() => {
     console.error('Camisa 3D:', err);
     msg.textContent = 'Não foi possível abrir a visualização 3D, mas você pode continuar o pedido normalmente.';
   };
-  import('./camisa3d/viewer.js?v=20261008i')
+  import('./camisa3d/viewer.js?v=20261008j')
     .then(m => {
       real = m.createShirt($('#shirt3d'), { onPronto: () => { msg.hidden = true; }, onErro: falhou });
       for (const [k, a] of Object.entries(fila)) real[k](...a);
@@ -199,8 +199,18 @@ function syncShirtText() {
   cN.textContent = `${n.length}/12`; cN.classList.toggle('full', n.length >= 12);
   cU.textContent = `${num.length}/4`; cU.classList.toggle('full', num.length >= 4);
   Shirt.setText(state.nome, state.numero);
+  espelhar();
   updateSummary();
 }
+// espelho dos campos no painel da camisa (celular, digitando): mesmo texto e o campo ativo marcado
+function espelhar() {
+  $$('.esp').forEach(e => {
+    const campo = el[e.dataset.campo];
+    $('b', e).textContent = campo.value;
+    e.classList.toggle('ativo', document.activeElement === campo);
+  });
+}
+$$('.esp').forEach(e => e.addEventListener('pointerdown', ev => { ev.preventDefault(); el[e.dataset.campo].focus(); }));
 ['camisaNome', 'camisaNumero'].forEach(id => {
   el[id].addEventListener('input', syncShirtText);
   el[id].addEventListener('focus', () => Shirt.showSide('back'));
@@ -225,22 +235,24 @@ function syncShirtText() {
     if (!celular()) return;
     if (!ativo) {
       // tamanho da camisa: cerca de 1/3 da tela, decidido antes de o teclado abrir
-      const camisaAlt = Math.round(Math.max(170, Math.min(innerHeight * .34, 300)));
+      const camisaAlt = Math.round(Math.max(160, Math.min(innerHeight * .3, 270)));
       raiz.style.setProperty('--ed-alt', camisaAlt + 'px');
       raiz.style.setProperty('--ed-topo', '0px');
       espaco.style.height = col.offsetHeight + 'px'; col.before(espaco);
       document.body.classList.add('editando');
       ativo = true;
       // um único rolamento: o campo logo abaixo da camisa
-      const d = e.target.getBoundingClientRect().top - (camisaAlt + 34);
+      const d = e.target.getBoundingClientRect().top - (camisaAlt + 110);   // abaixo da camisa e do espelho dos campos
       if (Math.abs(d) > 2) window.scrollTo({ top: scrollY + d, behavior: 'instant' });
     }
+    espelhar();
   }
   function sair() {
     if (!ativo) return;
     ativo = false;
     document.body.classList.remove('editando');
     espaco.remove();
+    espelhar();
   }
   ids.forEach(id => {
     el[id].addEventListener('focus', entrar);

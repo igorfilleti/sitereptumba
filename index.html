@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Goldman&family=Rajdhani:wght@700&family=Saira+Condensed:wght@600;700&family=Saira+Extra+Condensed:wght@900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20261008i">
+<link rel="stylesheet" href="css/style.css?v=20261008j">
 <script type="importmap">
 { "imports": {
   "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.min.js",
@@ -102,6 +102,12 @@
               <button type="button" class="reset" data-reset tabindex="-1" aria-label="Voltar à visão inicial" title="Voltar à visão inicial"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4.5h4.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
             </div>
           </div>
+        </div>
+        <!-- celular, digitando: espelho dos campos dentro do painel fixo (o iPhone desloca a tela com o teclado
+             e os campos de verdade podem ficar atrás da camisa) -->
+        <div class="espelho" aria-hidden="true">
+          <div class="esp" data-campo="camisaNome"><small>Nome na camisa</small><b data-vazio="JOGADOR"></b></div>
+          <div class="esp" data-campo="camisaNumero"><small>Número</small><b data-vazio="10"></b></div>
         </div>
       </div>
 
@@ -240,7 +246,7 @@
   </div>
 </dialog>
 
-<script src="js/vendor/qrcode.js?v=20261008i" defer></script>
-<script type="module" src="js/app.js?v=20261008i"></script>
+<script src="js/vendor/qrcode.js?v=20261008j" defer></script>
+<script type="module" src="js/app.js?v=20261008j"></script>
 </body>
 </html>
