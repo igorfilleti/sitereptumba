@@ -73,10 +73,12 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
   // completo = false: só nome/número mudaram (a parte fixa da estampa e os mapas são reaproveitados)
   function redesenhar(completo = true) {
     if (!forno) return;
-    forno.assar(estampa.desenhar(modelo.ext, img, texto, completo));
+    // ao digitar só o nome, a frente não muda: não reenvia a arte dela para a placa de vídeo
+    forno.assar(estampa.desenhar(modelo.ext, img, texto, completo), frenteMudou);
+    frenteMudou = false;
     sujo = true;
   }
-  let rq = 0, pedidoCompleto = false;
+  let rq = 0, pedidoCompleto = false, frenteMudou = true;
   const pedirDesenho = (completo = true) => {
     pedidoCompleto ||= completo;
     if (!rq) rq = requestAnimationFrame(() => { rq = 0; const c = pedidoCompleto; pedidoCompleto = false; redesenhar(c); });
@@ -130,7 +132,7 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
     }
     sujo = true;
   }
-  function setText(nome, numero) { texto = { nome, numero }; pedirDesenho(false); }
+  function setText(nome, numero) { frenteMudou ||= numero !== texto.numero; texto = { nome, numero }; pedirDesenho(false); }
   /* ---------- controles ---------- */
   const controls = new OrbitControls(camera, canvas);
   canvas.style.touchAction = 'pan-y';                          // deixa rolar a página no celular
@@ -289,6 +291,6 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
     if (mudou !== alterada && botaoInicio) { alterada = mudou; botaoInicio.classList.toggle('visivel', mudou); botaoInicio.tabIndex = mudou ? 0 : -1; }
     if (!pronto) { pronto = true; onPronto(); }
   });
-  if (new URLSearchParams(location.search).has('debug')) window.__camisa = { camera, controls, scene, renderer, quadros: () => renderer.info.render.frame, redesenhar, MOLAS, estadoMola };   // inspeção no console
+  if (new URLSearchParams(location.search).has('debug')) window.__camisa = { camera, controls, scene, renderer, quadros: () => renderer.info.render.frame, redesenhar, atual: () => ({ estampa, forno, modelo, img, texto }), MOLAS, estadoMola };   // inspeção no console
   return { setModel, setText, showSide, stopSpin };
 }

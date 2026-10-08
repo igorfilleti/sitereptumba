@@ -518,15 +518,18 @@ export function criarForno(renderer, geo, ext, telas, tamanho = 2048) {
   passos.push([0, 0]);
 
   // completo = false (ao digitar): só a frente e as costas mudaram; refaz apenas a textura de cor
-  function assar(completo = true) {
-    for (const [nome, t] of Object.entries(tex)) if (completo || nome === 'frente' || nome === 'costas') t.needsUpdate = true;
+  // frente = false: só as costas mudaram (nome digitado)
+  function assar(completo = true, frente = true) {
+    for (const [nome, t] of Object.entries(tex)) if (completo || (nome === 'frente' && frente) || nome === 'costas') t.needsUpdate = true;
     const antes = renderer.getRenderTarget(), autoClear = renderer.autoClear;
     renderer.autoClear = false;
     const passadas = [[0, alvo, 0xffffff], [1, relevo, 0x000000], [2, rugosidade, 0xffffff]];
     for (const [modo, rt, fundo] of completo ? passadas : passadas.slice(0, 1)) {
       mat.uniforms.uModo.value = modo;
-      renderer.setRenderTarget(rt); renderer.setClearColor(fundo, 1); renderer.clear();
-      for (const [x, y] of passos) { mat.uniforms.uDesloc.value.set(x, y); renderer.render(cena, cam); }
+      renderer.setRenderTarget(rt);
+      // ao digitar, as bordas estendidas das costuras (passadas deslocadas) não mudam: basta a passada final por cima
+      if (completo) { renderer.setClearColor(fundo, 1); renderer.clear(); }
+      for (const [x, y] of completo ? passos : [[0, 0]]) { mat.uniforms.uDesloc.value.set(x, y); renderer.render(cena, cam); }
     }
     renderer.autoClear = autoClear; renderer.setClearColor(0x000000, 0);
     renderer.setRenderTarget(antes);
