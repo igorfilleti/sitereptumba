@@ -116,8 +116,8 @@ const el = {
   file: $('#comprovante')
 };
 /* número da camisa: algarismos, letras (com acento) e alguns símbolos, até 4 caracteres, sem espaço */
-const NUMERO_FORA = /[^\p{L}\p{N}!?&#*+\-.\/']/gu;
-const NUMERO_OK = /^[\p{L}\p{N}!?&#*+\-.\/']{1,4}$/u;
+const NUMERO_FORA = /[^\p{L}\p{N}]/gu;
+const NUMERO_OK = /^[\p{L}\p{N}]{1,4}$/u;
 const RULES = {
   nome: v => (v.trim().split(/\s+/).length >= 2 && v.trim().length >= 5) || 'Informe nome e sobrenome.',
   apelido: v => v.trim().length >= 2 || 'Informe seu apelido.',
@@ -169,8 +169,8 @@ el.celular.addEventListener('input', () => {
 
 /* nome e número da camisa — atualizam o 3D em tempo real */
 function syncShirtText() {
-  // nome aceita os mesmos caracteres do número, mais o espaço
-  const n = el.camisaNome.value.toUpperCase().replace(/[^\p{L}\p{N} !?&#*+\-.\/']/gu, '').replace(/\s{2,}/g, ' ').slice(0, 12);
+  // nome e número: só letras e números (o nome também aceita espaço)
+  const n = el.camisaNome.value.toUpperCase().replace(/[^\p{L}\p{N} ]/gu, '').replace(/\s{2,}/g, ' ').slice(0, 12);
   if (n !== el.camisaNome.value) el.camisaNome.value = n;
   const num = el.camisaNumero.value.toUpperCase().replace(NUMERO_FORA, '').slice(0, 4);
   if (num !== el.camisaNumero.value) el.camisaNumero.value = num;
