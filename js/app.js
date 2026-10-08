@@ -6,12 +6,13 @@
    ===================================================================== */
 const CONFIG = {
   scriptUrl: '',          // URL do App da Web do Google Apps Script (termina em /exec)
-  preco: 0,               // valor da camisa em reais, ex.: 120
+  preco: 120,             // valor da camisa em reais, ex.: 120
   pix: {
-    chave: '',            // chave Pix. Celular no formato +5519999999999
-    nome: '',             // nome de quem recebe (como aparece no banco)
-    cidade: '',           // cidade de quem recebe
-    copiaECola: ''        // opcional: código "copia e cola" gerado pelo seu banco (tem prioridade)
+    chave: 'f605963b-7532-47ee-95cd-1e67afe4041b',   // chave aleatória; chave Pix. Celular no formato +5519999999999
+    nome: 'FELIPE DOS S MODESTO',   // nome de quem recebe (como aparece no banco)
+    cidade: 'SAO PAULO',   // cidade de quem recebe
+    // código do QR enviado (R$ 120,00), lido da imagem do banco
+    copiaECola: '00020101021126580014br.gov.bcb.pix0136f605963b-7532-47ee-95cd-1e67afe4041b5204000053039865406120.005802BR5920FELIPE DOS S MODESTO6009SAO PAULO62070503***63042779'   // opcional: código "copia e cola" gerado pelo seu banco (tem prioridade)
   }
 };
 
