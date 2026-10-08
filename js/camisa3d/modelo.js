@@ -158,7 +158,6 @@ export async function carregarModelo() {
   const { max } = geo.boundingBox;
   const ext = { X: Math.max(max.x, -geo.boundingBox.min.x) + .005, Z: Math.max(max.z, -geo.boundingBox.min.z) + .005, L: ALTURA };
   distanciaManga(geo);
-  troncoLiso(geo, ALTURA);                          // tronco acompanha só o contorno do tórax, sem ondas
   // camisa real → modelo: a manga real mede DESIGN.real.manga; a do modelo, o que foi medido acima
   const compManga = geo.userData.compManga.reduce((s, v) => s + v, 0) / geo.userData.compManga.length;
   const escalaReal = compManga / DESIGN.real.manga;
@@ -322,91 +321,3 @@ export function criarForno(renderer, geo, ext, telas, tamanho = 2048) {
   return { textura: alvo.texture, relevo: relevo.texture, rugosidade: rugosidade.texture, assar };
 }
 
-
-/* ---------- tronco liso: a camisa só acompanha o contorno do tórax ----------
-   Em cada altura, mede o raio do tronco em volta do eixo do corpo (por ângulo), suaviza esse
-   contorno em volta e na altura (some as ondas do pano, fica o formato de peito/costas/laterais)
-   e encaixa frente e costas nele. Perto das costuras com mangas e gola o efeito some aos poucos. */
-export const TRONCO_LISO = { forca: 1, raioCostura: .05, faixasY: 60, faixasA: 72, suavY: 3, suavA: 4 };
-function troncoLiso(geo, L) {
-  const C = TRONCO_LISO; if (!C.forca) return;
-  const p = geo.attributes.position, uv = geo.attributes.uv, n = p.count;
-  const tronco = new Uint8Array(n), costura = [];
-  for (let i = 0; i < n; i++) {
-    const k = peca(uv.getX(i), uv.getY(i));
-    if (k === 'frente' || k === 'costas') tronco[i] = 1; else costura.push(i);
-  }
-  // grade de pontos que não são tronco (mangas e gola), para medir a distância até as costuras
-  const cel = C.raioCostura, hash = new Map(), chave = (x, y, z) => `${Math.floor(x / cel)},${Math.floor(y / cel)},${Math.floor(z / cel)}`;
-  for (const i of costura) { const ch = chave(p.getX(i), p.getY(i), p.getZ(i)); (hash.get(ch) || hash.set(ch, []).get(ch)).push(i); }
-  const distCostura = i => {
-    const x = p.getX(i), y = p.getY(i), z = p.getZ(i), cx = Math.floor(x / cel), cy = Math.floor(y / cel), cz = Math.floor(z / cel);
-    let d = Infinity;
-    for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) for (let c = -1; c <= 1; c++) {
-      const l = hash.get(`${cx + a},${cy + b},${cz + c}`); if (!l) continue;
-      for (const j of l) d = Math.min(d, Math.hypot(p.getX(j) - x, p.getY(j) - y, p.getZ(j) - z));
-    }
-    return d;
-  };
-  // raio médio por (altura, ângulo)
-  const NY = C.faixasY, NA = C.faixasA, soma = new Float64Array(NY * NA), cont = new Float64Array(NY * NA);
-  const fy = y => Math.min(NY - 1, Math.max(0, Math.floor(y / L * NY))), fa = (x, z) => { const a = Math.atan2(x, z); return ((Math.floor((a + Math.PI) / (2 * Math.PI) * NA)) % NA + NA) % NA; };
-  for (let i = 0; i < n; i++) if (tronco[i]) { const b = fy(p.getY(i)) * NA + fa(p.getX(i), p.getZ(i)); soma[b] += Math.hypot(p.getX(i), p.getZ(i)); cont[b]++; }
-  // suaviza (gaussiano separável), ignorando células vazias
-  let R = new Float64Array(NY * NA), W = new Float64Array(NY * NA);
-  for (let b = 0; b < NY * NA; b++) if (cont[b]) { R[b] = soma[b] / cont[b]; W[b] = 1; }
-  const R0 = R.slice(), W0 = W.slice();                      // contorno original (antes de suavizar)
-  const borra = (sigma, aoLongoA) => {
-    const r2 = new Float64Array(NY * NA), w2 = new Float64Array(NY * NA), raio = Math.ceil(sigma * 2.5);
-    for (let yy = 0; yy < NY; yy++) for (let aa = 0; aa < NA; aa++) {
-      let s = 0, w = 0;
-      for (let d = -raio; d <= raio; d++) {
-        const g = Math.exp(-d * d / (2 * sigma * sigma));
-        let y2 = yy, a2 = aa; if (aoLongoA) a2 = (aa + d + NA) % NA; else { y2 = yy + d; if (y2 < 0 || y2 >= NY) continue; }
-        const b = y2 * NA + a2; s += R[b] * W[b] * g; w += W[b] * g;
-      }
-      const b = yy * NA + aa; r2[b] = w ? s / w : 0; w2[b] = w ? 1 : 0;
-    }
-    R = r2; W = w2;
-  };
-  borra(C.suavA, true); borra(C.suavY, false);
-  const raioEm = (y, x, z, Rg = R, Wg = W) => {   // interpolação bilinear na grade
-    const gy = Math.min(NY - 1.001, Math.max(0, y / L * NY - .5)), y0 = Math.floor(gy), ty = gy - y0;
-    const a = Math.atan2(x, z), ga = ((a + Math.PI) / (2 * Math.PI) * NA - .5 + NA) % NA, a0 = Math.floor(ga), ta = ga - a0, a1 = (a0 + 1) % NA;
-    const y1 = Math.min(NY - 1, y0 + 1);
-    // média ponderada só das células com pontos (células vazias não puxam o raio para zero)
-    let s = 0, w = 0;
-    for (const [yy, aa, g] of [[y0, a0, (1 - ty) * (1 - ta)], [y0, a1, (1 - ty) * ta], [y1, a0, ty * (1 - ta)], [y1, a1, ty * ta]]) { const b = yy * NA + aa; if (Wg[b]) { s += Rg[b] * g; w += g; } }
-    return w > 1e-6 ? s / w : 0;
-  };
-  const suave = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
-  for (let i = 0; i < n; i++) {
-    if (!tronco[i]) continue;
-    // escala pela razão contorno liso ÷ contorno original: some a onda e a bainha dobrada (camada de dentro)
-    // continua um pouco para dentro da de fora
-    const x = p.getX(i), y = p.getY(i), z = p.getZ(i), r = Math.hypot(x, z), alvo = raioEm(y, x, z), orig = raioEm(y, x, z, R0, W0);
-    if (!r || !alvo || !orig) continue;
-    const w = C.forca * suave(0, C.raioCostura, distCostura(i));
-    const k = 1 + (alvo / orig - 1) * w;
-    p.setX(i, x * k); p.setZ(i, z * k);
-  }
-  p.needsUpdate = true;
-  // normais lisas, somadas nos pontos repetidos das costuras (sem quebra de luz)
-  const idx = geo.index.array, grupo = new Int32Array(n), mapa = new Map(); let ng = 0;
-  for (let i = 0; i < n; i++) { const ch = Math.round(p.getX(i) * 1e5) + ',' + Math.round(p.getY(i) * 1e5) + ',' + Math.round(p.getZ(i) * 1e5); let g = mapa.get(ch); if (g === undefined) { g = ng++; mapa.set(ch, g); } grupo[i] = g; }
-  const nor = new Float64Array(ng * 3);
-  for (let t = 0; t < idx.length; t += 3) {
-    const a = idx[t], b = idx[t + 1], c = idx[t + 2];
-    const ux = p.getX(b) - p.getX(a), uy = p.getY(b) - p.getY(a), uz = p.getZ(b) - p.getZ(a), vx = p.getX(c) - p.getX(a), vy = p.getY(c) - p.getY(a), vz = p.getZ(c) - p.getZ(a);
-    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
-    for (const v of [a, b, c]) { const g = grupo[v]; nor[g * 3] += nx; nor[g * 3 + 1] += ny; nor[g * 3 + 2] += nz; }
-  }
-  const N = geo.attributes.normal;
-  for (let i = 0; i < n; i++) {
-    if (!tronco[i]) continue;   // mangas e gola mantêm as normais já suavizadas do arquivo
-    const g = grupo[i]; const x = nor[g * 3], y = nor[g * 3 + 1], z = nor[g * 3 + 2], l = Math.hypot(x, y, z) || 1;
-    const s = (x * N.getX(i) + y * N.getY(i) + z * N.getZ(i)) < 0 ? -1 : 1;
-    N.setXYZ(i, s * x / l, s * y / l, s * z / l);
-  }
-  N.needsUpdate = true;
-}
