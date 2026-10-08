@@ -355,14 +355,14 @@ function prepararFeminina(geo, ext, perfil) {
   ext.listras = limitesListras(alturaOmbro);
   if (perfil.mangaReal) {
     // o ombro do 3D cai até a cava; na camisa real (plana) a listra vermelha da gola cobre o ombro todo até
-    // a costura da manga. A altura usada nas listras sobe junto com a queda do ombro, diluída da 3ª listra
-    // vermelha de cima até o alto, para a listra do ombro manter a largura até a cava
+    // a costura da manga. A altura usada nas listras sobe junto com a queda do ombro, diluída na listra branca
+    // logo abaixo da do ombro, para a listra do ombro manter a largura até a cava
     const passo = .01, topo = [];
     for (let i = 0; i < n; i++) if (pc[i] >= 2) { const b = Math.floor(Math.abs(p.getX(i)) / passo); topo[b] = Math.max(topo[b] || 0, p.getY(i)); }
     let xNeck = 0; topo.forEach((t, b) => { if (t >= topo[xNeck] || 0) xNeck = b; });
     for (let b = xNeck + 1; b < topo.length; b++) topo[b] = Math.min(topo[b] ?? topo[b - 1], topo[b - 1]);
     const topoEm = x => { const f = Math.abs(x) / passo - .5, b = Math.max(0, Math.min(topo.length - 2, Math.floor(f))), t = Math.min(1, Math.max(0, f - b)); return b < xNeck ? alturaOmbro : (topo[b] ?? alturaOmbro) * (1 - t) + (topo[b + 1] ?? topo[b]) * t; };
-    const yL = new Float32Array(n), base = ext.listras[6];
+    const yL = new Float32Array(n), base = ext.listras[8];   // só da listra branca do nome para cima: as de baixo ficam retas
     for (let i = 0; i < n; i++) {
       const y = p.getY(i), t = Math.min(alturaOmbro, topoEm(p.getX(i)));
       const w = Math.min(1, Math.max(0, (y - base) / (alturaOmbro - base)));
