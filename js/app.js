@@ -257,6 +257,7 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;'
 /* etapas no topo: as estrelas acendem até a etapa em que o usuário está (a do meio da tela);
    ao voltar, as das etapas seguintes apagam; no início da página ficam todas apagadas */
 const etapas = $$('.steps a'), secoesEtapa = etapas.map(a => $('#' + a.dataset.step));
+const numerosSecao = secoesEtapa.map(s => $('.sec-num', s));   // as estrelas de cada etapa acendem junto
 let etapaAtual = null;
 function atualizarEtapas() {
   let atual = -1;
@@ -265,6 +266,7 @@ function atualizarEtapas() {
   etapaAtual = atual;
   etapas.forEach((a, i) => {
     a.classList.toggle('acesa', i <= atual);
+    if (numerosSecao[i]) numerosSecao[i].classList.toggle('acesa', i <= atual);
     a.classList.toggle('on', i === atual);
     if (i === atual) a.setAttribute('aria-current', 'step'); else a.removeAttribute('aria-current');
   });
@@ -273,6 +275,11 @@ let rqEtapas = 0;
 addEventListener('scroll', () => { if (!rqEtapas) rqEtapas = requestAnimationFrame(() => { rqEtapas = 0; atualizarEtapas(); }); }, { passive: true });
 addEventListener('resize', atualizarEtapas);
 atualizarEtapas();
+// toque numa estrela (do topo ou da etapa): um giro de 360°
+$$('.steps a, .sec-num').forEach(el => {
+  el.addEventListener('click', () => { el.classList.remove('gira'); void el.offsetWidth; el.classList.add('gira'); });
+  el.addEventListener('animationend', () => el.classList.remove('gira'));
+});
 
 /* envio */
 const readB64 = f => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = () => no(r.error); r.readAsDataURL(f); });
