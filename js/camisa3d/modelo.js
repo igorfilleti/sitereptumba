@@ -184,6 +184,8 @@ export async function carregarModelo(g = 'M') {
   const { max } = geo.boundingBox;
   const ext = { X: Math.max(max.x, -geo.boundingBox.min.x) + .005, Z: Math.max(max.z, -geo.boundingBox.min.z) + .005, L: P.altura };
   if (g === 'M') prepararMasculina(geo, ext); else prepararFeminina(geo, ext, P);
+  // altura usada nas listras do tronco: a própria altura, salvo ajuste do modelo
+  if (!geo.attributes.aY) geo.setAttribute('aY', new THREE.BufferAttribute(Float32Array.from({ length: geo.attributes.position.count }, (_, i) => geo.attributes.position.getY(i)), 1));
 
   const material = new THREE.MeshPhysicalMaterial({
     normalMap: trama(), normalScale: new THREE.Vector2(.18, .18),
@@ -298,24 +300,19 @@ function prepararFeminina(geo, ext, perfil) {
     };
     eixo(media(ids));
     if (perfil.mangaReal) {
-      // manga raglan no 3D: a arte segue a camisa real, com a costura no ombro. A manga vai do punho
-      // até o comprimento real (em escala); o eixo é refeito só com essa parte, e o resto da peça vira tronco
-      comp = DESIGN.real.manga * ext.escalaReal;
-      eixo(media(ids.filter(i => proj(pos(i)) - ini < comp)));
-      // a costura real é a cava: vertical, na ponta do ombro. A ponta do ombro fica no alto da manga,
-      // a um comprimento de manga real da beirada de cima do punho
-      let fora = 1e9; for (const i of borda) fora = Math.min(fora, proj(pos(i)));
-      let topo = null;
-      for (const i of ids) if (Math.abs(proj(pos(i)) - fora - comp) < .01 && (topo === null || p.getY(i) > p.getY(topo))) topo = i;
-      const sx = Math.sign(A[0]), xCava = sx * p.getX(topo);
+      // manga raglan no 3D: a arte segue a camisa real, com a costura da manga vertical na largura do
+      // tronco (onde ficam as costuras laterais). O que a peça raglan tem para dentro disso vira tronco
+      const sx = Math.sign(A[0]);
+      let xCava = 0; for (let i = 0; i < n; i++) if (pc[i] >= 2 && tipoDe(i) !== lado) xCava = Math.max(xCava, sx * p.getX(i));
       for (const i of ids) if (sx * p.getX(i) < xCava) pc[i] = p.getZ(i) > 0 ? 2 : 3;
-    } else {
-      // a fração vai da boca ao ponto da cava mais alto no ombro
-      let fim = -1e9; for (const i of ids) fim = Math.max(fim, proj(pos(i)));
-      comp = fim - ini;
+      ext.cava = xCava;   // o forno traça a costura por posição (linha limpa, sem degraus dos triângulos)
+      eixo(media(ids.filter(i => pc[i] === 1)));
     }
+    // como na baby look: a fração vai da boca ao ponto da manga mais longe dela (alto da cava)
+    let fim = -1e9; for (const i of ids) if (pc[i] === 1) fim = Math.max(fim, proj(pos(i)));
+    comp = fim - ini;
     compr.push(comp);
-    const naManga = ids.filter(i => pc[i] === 1);
+    const naManga = perfil.mangaReal ? ids : ids.filter(i => pc[i] === 1);
     for (const i of naManga) dm[i] = Math.min(1, Math.max(0, (proj(pos(i)) - ini) / comp));
     if (lado === 'mangaE') {
       // lado de fora: o ponto mais afastado do corpo no meio da manga; "em volta" é perpendicular ao eixo
@@ -341,7 +338,25 @@ function prepararFeminina(geo, ext, perfil) {
   for (let i = 0; i < n; i++) if (naBorda[grupo[i]] && pc[i] >= 2 && p.getY(i) > ext.L * .75 && Math.abs(p.getX(i)) < ext.X * .5) decote.push(pos(i));
   if (!decote.length) for (let i = 0; i < n; i++) if (pc[i] === 0) decote.push(pos(i));
   // listras do tronco: do recorte do decote com o ombro (o ponto mais alto dele) até a barra
-  ext.listras = limitesListras(Math.max(...decote.map(q => q[1])));
+  const alturaOmbro = Math.max(...decote.map(q => q[1]));
+  ext.listras = limitesListras(alturaOmbro);
+  if (perfil.mangaReal) {
+    // o ombro do 3D cai até a cava; na camisa real (plana) a listra vermelha da gola cobre o ombro todo até
+    // a costura da manga. A altura usada nas listras sobe junto com a queda do ombro, diluída da 3ª listra
+    // vermelha de cima até o alto, para a listra do ombro manter a largura até a cava
+    const passo = .01, topo = [];
+    for (let i = 0; i < n; i++) if (pc[i] >= 2) { const b = Math.floor(Math.abs(p.getX(i)) / passo); topo[b] = Math.max(topo[b] || 0, p.getY(i)); }
+    let xNeck = 0; topo.forEach((t, b) => { if (t >= topo[xNeck] || 0) xNeck = b; });
+    for (let b = xNeck + 1; b < topo.length; b++) topo[b] = Math.min(topo[b] ?? topo[b - 1], topo[b - 1]);
+    const topoEm = x => { const f = Math.abs(x) / passo - .5, b = Math.max(0, Math.min(topo.length - 2, Math.floor(f))), t = Math.min(1, Math.max(0, f - b)); return b < xNeck ? alturaOmbro : (topo[b] ?? alturaOmbro) * (1 - t) + (topo[b + 1] ?? topo[b]) * t; };
+    const yL = new Float32Array(n), base = ext.listras[6];
+    for (let i = 0; i < n; i++) {
+      const y = p.getY(i), t = Math.min(alturaOmbro, topoEm(p.getX(i)));
+      const w = Math.min(1, Math.max(0, (y - base) / (alturaOmbro - base)));
+      yL[i] = y + Math.max(0, alturaOmbro - t) * w;
+    }
+    geo.setAttribute('aY', new THREE.BufferAttribute(yL, 1));
+  }
   if (!temGola) for (let i = 0; i < n; i++) {
     if (pc[i] === 1) continue;
     const [x, y, z] = pos(i);
@@ -392,31 +407,32 @@ vec2 girarBalanco(vec2 v, float a) { float c = cos(a), s = sin(a); return vec2(c
 /* ---------- forno: pinta o design na textura, peça por peça ---------- */
 const VS = `
 uniform vec2 uDesloc;
-attribute float dManga, aPeca, aGola;
+attribute float dManga, aPeca, aGola, aY;
 attribute vec2 aMangaUV;
-varying vec3 vP; varying vec2 vMu; varying float vDm, vPeca, vGola;
+varying vec3 vP; varying vec2 vMu; varying float vDm, vPeca, vGola, vY;
 void main() {
-  vP = position; vMu = aMangaUV; vDm = dManga; vPeca = aPeca; vGola = aGola;
+  vP = position; vY = aY; vMu = aMangaUV; vDm = dManga; vPeca = aPeca; vGola = aGola;
   gl_Position = vec4(uv.x * 2. - 1. + uDesloc.x, uv.y * 2. - 1. + uDesloc.y, 0., 1.);
 }`;
 const FS = `
 uniform sampler2D tFrente, tCostas, tManga, tRelevo, tBrilho;
 uniform int uModo;   // 0 = cor; 1 = relevo (altura dos bordados); 2 = rugosidade (borracha mais lisa)
 uniform vec3 uExt;
-uniform float uGolaFaixa;   // espessura da faixa preta da gola (em aGola)
+uniform float uGolaFaixa, uCava;   // uCava > 0: costura da manga vertical em |x| = uCava   // espessura da faixa preta da gola (em aGola)
 uniform vec2 uMangaWH;
 uniform float uLim[10];   // limites entre as 11 listras do tronco, da barra para cima
 uniform vec3 uManga;   // fim do punho, da branca e da vermelha (fração da manga, a partir do punho)
 uniform vec3 cBranco, cVermelho, cPreto;
-varying vec3 vP; varying vec2 vMu; varying float vDm, vPeca, vGola;
+varying vec3 vP; varying vec2 vMu; varying float vDm, vPeca, vGola, vY;
 vec4 adesivo(sampler2D t, vec2 c) { return (c.x < 0. || c.x > 1. || c.y < 0. || c.y > 1.) ? vec4(0.) : texture2D(t, c); }
 void main() {
   // tronco: listras horizontais (a da barra é vermelha), com borda suavizada
   // a da barra é vermelha; cada limite alterna a cor (borda suavizada)
-  float w = max(fwidth(vP.y), 1e-5), verm = 1.;
-  for (int i = 0; i < 10; i++) { float t = smoothstep(uLim[i] - w, uLim[i] + w, vP.y); verm += mod(float(i), 2.) < .5 ? -t : t; }
+  float w = max(fwidth(vY), 1e-5), verm = 1.;
+  for (int i = 0; i < 10; i++) { float t = smoothstep(uLim[i] - w, uLim[i] + w, vY); verm += mod(float(i), 2.) < .5 ? -t : t; }
   vec3 c = mix(cBranco, cVermelho, verm);
   bool manga = vPeca > .5 && vPeca < 1.5, frente = vPeca > 1.5 && vPeca < 2.5;
+  if (uCava > 0. && vPeca > .5 && vPeca < 2.99) { bool raglan = vPeca < 1.99; manga = abs(vP.x) > uCava; frente = !manga && (raglan ? vP.z > 0. : frente); }
   float wg = max(fwidth(vGola), 1e-5), gola = vPeca < .5 ? 1. : 1. - smoothstep(uGolaFaixa - wg, uGolaFaixa + wg, vGola);
   if (manga) {   // manga, do punho ao ombro: preto, branca, vermelha, branca (paralelas ao punho)
     float wm = max(fwidth(vDm), 1e-4);
@@ -466,7 +482,7 @@ export function criarForno(renderer, geo, ext, telas, tamanho = 2048) {
       tFrente: { value: tex.frente }, tCostas: { value: tex.costas }, tManga: { value: tex.manga }, tRelevo: { value: tex.relevo }, tBrilho: { value: tex.brilho }, uModo: { value: 0 },
       uExt: { value: new THREE.Vector3(ext.X, ext.L, ext.Z) }, uLim: { value: ext.listras },
       uManga: { value: listrasManga() }, uDesloc: { value: new THREE.Vector2() },
-      uGolaFaixa: { value: ext.golaFaixa }, uMangaWH: { value: new THREE.Vector2(ext.manga.W, ext.manga.H) },
+      uGolaFaixa: { value: ext.golaFaixa }, uCava: { value: ext.cava || 0 }, uMangaWH: { value: new THREE.Vector2(ext.manga.W, ext.manga.H) },
       cBranco: { value: hex(COR.branco) }, cVermelho: { value: hex(COR.vermelho) }, cPreto: { value: hex(COR.preto) }
     }
   });
