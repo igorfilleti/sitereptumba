@@ -145,6 +145,7 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
   carregar('M').catch(err => { console.error('Camisa 3D:', err); onErro(err); });
 
   function setModel(g, a, c) {
+    if (medidas) atencao();                                      // a 1ª chamada é a do carregamento da página, não da pessoa
     g = g === 'F' ? 'F' : 'M'; medidas = [a, c];
     escalaAlvo.copy(escalaDe(g, a, c));
     if (g !== gAtual) {
@@ -154,7 +155,7 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
     }
     sujo = true;
   }
-  function setText(nome, numero) { versaoArte++; frenteMudou ||= numero !== texto.numero; texto = { nome, numero }; pedirDesenho(false); }
+  function setText(nome, numero) { if (nome !== texto.nome || numero !== texto.numero) atencao(); versaoArte++; frenteMudou ||= numero !== texto.numero; texto = { nome, numero }; pedirDesenho(false); }
   /* ---------- controles ---------- */
   const controls = new OrbitControls(camera, canvas);
   canvas.style.touchAction = 'pan-y';                          // deixa rolar a página no celular
@@ -168,14 +169,13 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
   const alvoFoco = new THREE.Vector3();                          // para onde a câmera olha (o centro, ou o ponto do zoom)
   const hint = document.getElementById('hint');
   const esconderDica = () => { if (hint) hint.style.opacity = 0; };
-  /* giro de descanso: a camisa gira sozinha, devagar, quando ninguém está prestando atenção nela
-     (sem mexer há alguns segundos, mouse fora dela, sem zoom e sem digitar nome/número) */
+  /* giro de descanso: a camisa gira sozinha, devagar. Para quando a pessoa clica/arrasta a camisa ou mexe
+     numa opção de alteração (modelagem, nome, número, tamanho, frente/costas, zoom); volta depois de alguns
+     segundos sem mexer. O mouse só passar por cima não para */
   const GIRO = { ocioso: 4, velocidade: 1.5 };                   // segundos parado antes de girar; velocidade (1 volta a cada 60 ÷ 1,5 = 40 s)
-  let ultimaAtencao = -Infinity, sobreCamisa = false, arrastando = false, rampaGiro = 0;
+  let ultimaAtencao = -Infinity, arrastando = false, rampaGiro = 0;
   const atencao = () => { ultimaAtencao = performance.now(); };
   const reduzirMovimento = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  canvas.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') sobreCamisa = true; });
-  canvas.addEventListener('pointerleave', () => { sobreCamisa = false; atencao(); });
   controls.addEventListener('start', () => { arrastando = true; atencao(); alvoAz = null; esconderDica(); });
   controls.addEventListener('end', () => { arrastando = false; atencao(); });
   const zoomPara = z => { zoomAlvo = Math.max(ZOOM.min, Math.min(ZOOM.max, z)); atencao(); esconderDica(); };
@@ -285,7 +285,7 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
 
     // giro de descanso: entra e sai suave (a velocidade sobe e desce em ~1 s)
     const digitando = document.activeElement && document.activeElement.matches && document.activeElement.matches('#camisaNome,#camisaNumero');
-    const descansando = !reduzirMovimento && !sobreCamisa && !arrastando && !digitando && alvoAz === null && zoomAlvo >= .98 && agora - ultimaAtencao > GIRO.ocioso * 1000;
+    const descansando = !reduzirMovimento && !arrastando && !digitando && alvoAz === null && zoomAlvo >= .98 && agora - ultimaAtencao > GIRO.ocioso * 1000;
     rampaGiro += ((descansando ? 1 : 0) - rampaGiro) * Math.min(1, dt * 1.5);
     if (!descansando && rampaGiro < .01) rampaGiro = 0;
     controls.autoRotate = rampaGiro > 0;
