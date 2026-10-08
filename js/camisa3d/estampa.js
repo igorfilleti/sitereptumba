@@ -336,7 +336,8 @@ export function criarEstampa(resolucao = 1024) {
     }
 
     // costas: nome e "Rep. Tumba" centralizados em listras brancas, número grande com borda branca
-    nomeFixo(nome, listra('branca', B.nome.listra).meio);
+    // a listra do nome pode ter a borda de cima rebaixada nas costas (ext.nomeTopo): centraliza na parte visível
+    { const l = listra('branca', B.nome.listra); nomeFixo(nome, ext.nomeTopo ? (l.baixo + Math.min(l.topo, ext.nomeTopo)) / 2 : l.meio); }
     numeroCostas(num, naListra(B.numero.inicio), naListra(B.numero.fim));
     return refazer;
   }

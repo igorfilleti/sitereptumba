@@ -371,6 +371,9 @@ function prepararFeminina(geo, ext, perfil) {
       const queda = Math.max(0, alturaOmbro - t), quedaNuca = p.getZ(i) < 0 ? Math.max(0, alturaOmbro - Math.min(alturaOmbro, topoEm((xNeck + 5) * passo))) : 0;
       yL[i] = y + Math.max(queda, quedaNuca) * w;
     }
+    // borda de cima da listra do nome no meio das costas (onde aY = limite): a estampa centraliza o nome nela
+    { const q = Math.max(0, alturaOmbro - Math.min(alturaOmbro, topoEm((xNeck + 5) * passo))), k = q / (alturaOmbro - base);
+      ext.nomeTopo = (ext.listras[9] + k * base) / (1 + k); }
     geo.setAttribute('aY', new THREE.BufferAttribute(yL, 1));
   }
   if (!temGola) for (let i = 0; i < n; i++) {
