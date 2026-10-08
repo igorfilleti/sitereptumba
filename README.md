@@ -36,10 +36,10 @@ js/camisa3d/            camisa 3D (three.js)
   viewer.js             cena, luz, câmera e controles
   modelo.js             carrega o modelo 3D e pinta o design na textura dele
   estampa.js            design (arte da Icone): posições de logos, nome e número
-js/vendor/qrcode.js     gerador de QR Code (MIT)
-assets/img/             escudo, "Rep. Tumba", Unicamp e "icone"
-assets/models/masculina/ modelo 3D da masculina (camisa.glb, ~490 KB)
-assets/models/feminina/ modelo 3D da baby look (scene.gltf + scene.bin)
+js/vendor/qrcode.js     gerador de QR Code (MIT, minificado)
+assets/img/             escudo, "Rep. Tumba", Unicamp e "icone" (WebP sem perda) e favicon
+assets/models/masculina/ modelo 3D da masculina (camisa.glb, ~170 KB, compactado com meshopt)
+assets/models/feminina/  modelo 3D da baby look (camisa.glb, ~70 KB, compactado com meshopt)
 servidor.ps1            servidor local para testes
 apps-script/            script do Google que recebe os pedidos (planilha + comprovantes no Drive)
 ```

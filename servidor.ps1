@@ -5,7 +5,7 @@ param([int]$Porta = 8080)
 $raiz = $PSScriptRoot
 $tipos = @{
   '.html' = 'text/html; charset=utf-8'; '.css' = 'text/css; charset=utf-8'; '.js' = 'text/javascript; charset=utf-8'
-  '.json' = 'application/json'; '.png' = 'image/png'; '.jpg' = 'image/jpeg'; '.svg' = 'image/svg+xml'
+  '.json' = 'application/json'; '.png' = 'image/png'; '.webp' = 'image/webp'; '.jpg' = 'image/jpeg'; '.svg' = 'image/svg+xml'
   '.glb' = 'model/gltf-binary'; '.gltf' = 'model/gltf+json'; '.hdr' = 'application/octet-stream'; '.ico' = 'image/x-icon'
 }
 $http = New-Object System.Net.HttpListener
