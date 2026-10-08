@@ -341,13 +341,12 @@ form.addEventListener('submit', async e => {
 });
 /* tela de pedido confirmado: ficha do pedido, foto da camisa (o próprio 3D, de costas) e confete */
 function mostrarConfirmacao(p) {
-  $('#doneText').textContent = `Valeu, ${p.apelido}! Sua listradinha está a caminho.`;
+  $('#doneText').textContent = `Valeu, ${p.apelido}! Sua listradinha já está em produção.`;
   $('#doneNome').textContent = p.camisaNome;
   $('#doneNum').textContent = p.camisaNumero;
   $('#doneMod').textContent = p.genero === 'Feminino' ? 'Feminina' : 'Masculina';
   $('#doneTam').textContent = p.tamanho;
   $('#doneValor').textContent = CONFIG.preco ? p.pagamento : '—';
-  $('#doneZap').textContent = `Chamamos você no WhatsApp ${p.celular} para combinar a entrega.`;
   const foto = Shirt.foto(), img = $('#doneFoto');
   if (foto) { img.src = foto; img.hidden = false; }
   $('#done').showModal();
