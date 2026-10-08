@@ -42,7 +42,7 @@ const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const brl = v => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
-const state = { genero: '', idx: -1, nome: '', numero: '', file: null, pagamento: 'vista' };
+const state = { genero: 'Masculino', idx: -1, nome: '', numero: '', file: null, pagamento: 'vista' };
 const gKey = () => (state.genero === 'Feminino' ? 'F' : 'M');
 const sizeRow = () => TAMANHOS[gKey()][state.idx >= 0 ? state.idx : 2];
 
@@ -60,7 +60,7 @@ const Shirt = (() => {
     console.error('Camisa 3D:', err);
     msg.textContent = 'Não foi possível abrir a visualização 3D, mas você pode continuar o pedido normalmente.';
   };
-  import('./camisa3d/viewer.js?v=20261008c')
+  import('./camisa3d/viewer.js?v=20261008d')
     .then(m => {
       real = m.createShirt($('#shirt3d'), { onPronto: () => { msg.hidden = true; }, onErro: falhou });
       for (const [k, a] of Object.entries(fila)) real[k](...a);
