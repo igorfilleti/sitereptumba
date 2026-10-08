@@ -45,3 +45,6 @@ de [Carlos.Maciel](https://sketchfab.com/Carlos.Maciel), licença
 
 Modelo da baby look baseado em ["T-Shirt for Female"](https://sketchfab.com/3d-models/t-shirt-for-female-fbd56879e5c54b53b3d75d987342c8f8)
 de DaaGHrii, licença [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/). Modificado: textura original removida; arte da Rep. Tumba aplicada.
+
+Teste da masculina nova (abrir com `?masc=2`): ["Men Regular Apparel Fit Sporty T-Shirt"](https://sketchfab.com/3d-models/men-regular-apparel-fit-sporty-t-shirt-4d055bb8c1e04549a4b2dac7b27ebb2c)
+de [BINARYCLOTH](https://sketchfab.com/binaryclothofficial), licença [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/). Modificado: texturas removidas; malha compactada.

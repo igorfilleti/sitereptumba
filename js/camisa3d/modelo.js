@@ -149,22 +149,32 @@ function distanciaManga(geo) {
 const PERFIS = {
   M: { url: URL_MODELO, altura: ALTURA, ref: [52, ALTURA * 100] },
   // baby look M de referência: 44 × 60 cm
-  F: { url: new URL('../../assets/models/feminina/scene.gltf', import.meta.url).href, altura: .60, ref: [44, 60] }
+  F: { url: new URL('../../assets/models/feminina/scene.gltf', import.meta.url).href, altura: .60, ref: [44, 60], giro: Math.PI / 2 },
+  // teste (?masc=2): "Men Regular Apparel Fit Sporty T-Shirt" de BINARYCLOTH (CC BY 4.0), manga raglan
+  M2: { url: new URL('../../assets/models/masculina2/camisa.glb', import.meta.url).href, altura: ALTURA, ref: [52, ALTURA * 100], giro: 0 }
 };
+const TESTE_MASC = typeof location !== 'undefined' && new URLSearchParams(location.search).get('masc') === '2';
 export const referencia = g => PERFIS[g].ref;
 
 export async function carregarModelo(g = 'M') {
+  if (g === 'M' && TESTE_MASC) g = 'M2';
   const P = PERFIS[g];
   const gltf = await new GLTFLoader().loadAsync(P.url);
   gltf.scene.updateMatrixWorld(true);
   let malha = null;
-  gltf.scene.traverse(o => { if (o.isMesh && (g === 'F' || o.material.name === 'Louis_Vuitton_Original')) malha = o; });
+  gltf.scene.traverse(o => { if (o.isMesh && (g !== 'M' || o.material.name === 'Louis_Vuitton_Original')) malha = o; });
   if (!malha) throw new Error('Malha da camisa não encontrada no modelo.');
 
   // coordenadas de projeto: x centrado, y = 0 na barra, z centrado, em metros
   const geo = malha.geometry.clone();
+  // atributos compactados (inteiros normalizados) viram float antes de mexer na malha
+  for (const [nome, at] of Object.entries(geo.attributes)) if (!(at.array instanceof Float32Array)) {
+    const v = new Float32Array(at.count * at.itemSize);
+    for (let i = 0; i < at.count; i++) for (let c = 0; c < at.itemSize; c++) v[i * at.itemSize + c] = at.getComponent(i, c);
+    geo.setAttribute(nome, new THREE.BufferAttribute(v, at.itemSize));
+  }
   geo.applyMatrix4(malha.matrixWorld);
-  if (g === 'M') geo.rotateY(GIRO); else orientarFeminina(geo);
+  if (g === 'M') geo.rotateY(GIRO); else orientar(geo, P.giro);
   geo.computeBoundingBox();
   const b = geo.boundingBox, k = P.altura / (b.max.y - b.min.y);
   geo.translate(-(b.min.x + b.max.x) / 2, -b.min.y, -(b.min.z + b.max.z) / 2);
@@ -218,8 +228,8 @@ function prepararMasculina(geo, ext) {
 
 /* baby look: o arquivo vem com as mangas no eixo z. Gira para as mangas ficarem em x e a frente
    (o lado de decote mais fundo) para +z */
-function orientarFeminina(geo) {
-  geo.rotateY(Math.PI / 2);
+function orientar(geo, giro) {
+  geo.rotateY(giro);
   geo.computeBoundingBox();
   const p = geo.attributes.position, b = geo.boundingBox, cx = (b.min.x + b.max.x) / 2, cz = (b.min.z + b.max.z) / 2, h = b.max.y - b.min.y;
   // no meio (x ≈ 0), o ponto mais alto de cada lado: a frente tem o decote mais baixo
