@@ -151,7 +151,7 @@ const PERFIS = {
   // baby look M de referência: 44 × 60 cm
   F: { url: new URL('../../assets/models/feminina/scene.gltf', import.meta.url).href, altura: .60, ref: [44, 60], giro: Math.PI / 2 },
   // teste (?masc=2): "Men Regular Apparel Fit Sporty T-Shirt" de BINARYCLOTH (CC BY 4.0), manga raglan
-  M2: { url: new URL('../../assets/models/masculina2/camisa.glb', import.meta.url).href, altura: ALTURA, ref: [52, ALTURA * 100], giro: 0 }
+  M2: { url: new URL('../../assets/models/masculina2/camisa.glb', import.meta.url).href, altura: ALTURA, ref: [52, ALTURA * 100], giro: 0, mangaReal: true }
 };
 const TESTE_MASC = typeof location !== 'undefined' && new URLSearchParams(location.search).get('masc') === '2';
 export const referencia = g => PERFIS[g].ref;
@@ -183,7 +183,7 @@ export async function carregarModelo(g = 'M') {
   geo.computeBoundingBox();
   const { max } = geo.boundingBox;
   const ext = { X: Math.max(max.x, -geo.boundingBox.min.x) + .005, Z: Math.max(max.z, -geo.boundingBox.min.z) + .005, L: P.altura };
-  if (g === 'M') prepararMasculina(geo, ext); else prepararFeminina(geo, ext);
+  if (g === 'M') prepararMasculina(geo, ext); else prepararFeminina(geo, ext, P);
 
   const material = new THREE.MeshPhysicalMaterial({
     normalMap: trama(), normalScale: new THREE.Vector2(.18, .18),
@@ -242,7 +242,7 @@ function orientar(geo, giro) {
 }
 
 /* baby look: sem peça de gola no molde. Classifica as peças pelas ilhas do molde e mede tudo pela geometria */
-function prepararFeminina(geo, ext) {
+function prepararFeminina(geo, ext, perfil) {
   const p = geo.attributes.position, idx = geo.index.array, n = p.count;
   const pos = i => [p.getX(i), p.getY(i), p.getZ(i)];
   // ilhas (peças): pontos ligados por triângulos
@@ -276,61 +276,69 @@ function prepararFeminina(geo, ext) {
   const naBorda = new Uint8Array(ng);
   for (const [ch, c] of arestas) if (c === 1) { naBorda[Math.floor(ch / ng)] = 1; naBorda[ch % ng] = 1; }
 
-  // decote: borda do tronco no alto, perto do meio
-  const decote = [];
-  for (let i = 0; i < n; i++) {
-    const t = tipoDe(i);
-    if (naBorda[grupo[i]] && (t === 'frente' || t === 'costas') && p.getY(i) > ext.L * .75 && Math.abs(p.getX(i)) < ext.X * .5) decote.push(pos(i));
-  }
-  // listras do tronco: do recorte do decote com o ombro (o ponto mais alto dele) até a barra
-  ext.listras = limitesListras(Math.max(...decote.map(q => q[1])));
   ext.escalaReal = ESCALA_REAL_F;
   ext.golaFaixa = DESIGN.gola.espessura * ext.escalaReal;
-
   const pc = new Float32Array(n), gl = new Float32Array(n).fill(9), dm = new Float32Array(n), mu = new Float32Array(n * 2).fill(99);
-  for (let i = 0; i < n; i++) {
-    const t = tipoDe(i);
-    pc[i] = t === 'frente' ? 2 : t === 'costas' ? 3 : 1;
-    if (pc[i] === 1) continue;
-    const [x, y, z] = pos(i);
-    if (y < ext.L * .6) continue;
-    let d = 9; for (const q of decote) d = Math.min(d, (x - q[0]) ** 2 + (y - q[1]) ** 2 + (z - q[2]) ** 2);
-    gl[i] = Math.sqrt(d);
-  }
+  for (let i = 0; i < n; i++) { const t = tipoDe(i); pc[i] = t === 'frente' ? 2 : t === 'costas' ? 3 : 1; }
 
   // mangas: eixo do centro da boca (a borda aberta; a cava é costurada no tronco) ao centro da manga
   const fr = listrasManga(), compr = [];
   for (const lado of ['mangaE', 'mangaD']) {
     const ids = []; for (let i = 0; i < n; i++) if (tipoDe(i) === lado) ids.push(i);
-    const sx = lado === 'mangaE' ? 1 : -1, borda = ids.filter(i => naBorda[grupo[i]]);
+    const borda = ids.filter(i => naBorda[grupo[i]]);
     const media = l => l.reduce((s, i) => [s[0] + p.getX(i) / l.length, s[1] + p.getY(i) / l.length, s[2] + p.getZ(i) / l.length], [0, 0, 0]);
-    const A = media(borda), B = media(ids);
-    const e = [B[0] - A[0], B[1] - A[1], B[2] - A[2]], L = Math.hypot(...e), u = e.map(c => c / L);
-    const proj = q => (q[0] - A[0]) * u[0] + (q[1] - A[1]) * u[1] + (q[2] - A[2]) * u[2];
-    // a fração vai da boca (o ponto dela mais perto do corpo) ao ponto da cava mais alto no ombro
-    let ini = -1e9, fim = -1e9;
-    for (const i of borda) ini = Math.max(ini, proj(pos(i)));
-    for (const i of ids) fim = Math.max(fim, proj(pos(i)));
-    const comp = fim - ini;
+    const A = media(borda);
+    let u = [0, 0, 0], proj = null, ini = 0, comp = 0;
+    const eixo = B => {
+      const e = [B[0] - A[0], B[1] - A[1], B[2] - A[2]], L = Math.hypot(...e); u = e.map(c => c / L);
+      proj = q => (q[0] - A[0]) * u[0] + (q[1] - A[1]) * u[1] + (q[2] - A[2]) * u[2];
+      ini = -1e9; for (const i of borda) ini = Math.max(ini, proj(pos(i)));   // ponto da boca mais perto do corpo
+    };
+    eixo(media(ids));
+    if (perfil.mangaReal) {
+      // manga raglan no 3D: a arte segue a camisa real, com a costura no ombro. A manga vai do punho
+      // até o comprimento real (em escala); o eixo é refeito só com essa parte, e o resto da peça vira tronco
+      comp = DESIGN.real.manga * ext.escalaReal;
+      eixo(media(ids.filter(i => proj(pos(i)) - ini < comp)));
+      for (const i of ids) if (proj(pos(i)) - ini > comp) pc[i] = p.getZ(i) > 0 ? 2 : 3;
+    } else {
+      // a fração vai da boca ao ponto da cava mais alto no ombro
+      let fim = -1e9; for (const i of ids) fim = Math.max(fim, proj(pos(i)));
+      comp = fim - ini;
+    }
     compr.push(comp);
-    for (const i of ids) dm[i] = Math.min(1, Math.max(0, (proj(pos(i)) - ini) / comp));
+    const naManga = ids.filter(i => pc[i] === 1);
+    for (const i of naManga) dm[i] = Math.min(1, Math.max(0, (proj(pos(i)) - ini) / comp));
     if (lado === 'mangaE') {
-      // lado de fora: o ponto mais afastado do corpo no meio da manga; "em volta" é perpendicular ao eixo e à normal ali
-      let fora = null; for (const i of ids) if (dm[i] > .4 && dm[i] < .7 && (fora === null || p.getX(i) > p.getX(fora))) fora = i;
+      // lado de fora: o ponto mais afastado do corpo no meio da manga; "em volta" é perpendicular ao eixo
+      let fora = null; for (const i of naManga) if (dm[i] > .4 && dm[i] < .7 && (fora === null || p.getX(i) > p.getX(fora))) fora = i;
       const F0 = pos(fora), nn = [1, 0, 0];
       let ea = [nn[1] * u[2] - nn[2] * u[1], nn[2] * u[0] - nn[0] * u[2], nn[0] * u[1] - nn[1] * u[0]];
       const la = Math.hypot(...ea); ea = ea.map(c => c / la);
       const topo = ini + fr.z * comp;
-      for (const i of ids) {
+      const rf = [F0[0] - A[0] - u[0] * proj(F0), F0[1] - A[1] - u[1] * proj(F0), F0[2] - A[2] - u[2] * proj(F0)], raio = Math.hypot(...rf);
+      for (const i of naManga) {
         const q = pos(i);
         // em volta: arco a partir do lado de fora (ângulo × raio), para a logo não encolher na curva
         const r = [q[0] - A[0] - u[0] * proj(q), q[1] - A[1] - u[1] * proj(q), q[2] - A[2] - u[2] * proj(q)];
-        const rf = [F0[0] - A[0] - u[0] * proj(F0), F0[1] - A[1] - u[1] * proj(F0), F0[2] - A[2] - u[2] * proj(F0)];
-        const raio = Math.hypot(...rf), ang = Math.atan2(r[0] * ea[0] + r[1] * ea[1] + r[2] * ea[2], (r[0] * rf[0] + r[1] * rf[1] + r[2] * rf[2]) / raio);
+        const ang = Math.atan2(r[0] * ea[0] + r[1] * ea[1] + r[2] * ea[2], (r[0] * rf[0] + r[1] * rf[1] + r[2] * rf[2]) / raio);
         mu[i * 2] = ang * raio; mu[i * 2 + 1] = proj(q) - topo;
       }
       ext.manga = { W: .2, H: .2, vermAlt: (fr.z - fr.y) * comp };
     }
+  }
+
+  // decote: borda do tronco (já com o ombro da raglan) no alto, perto do meio
+  const decote = [];
+  for (let i = 0; i < n; i++) if (naBorda[grupo[i]] && pc[i] !== 1 && p.getY(i) > ext.L * .75 && Math.abs(p.getX(i)) < ext.X * .5) decote.push(pos(i));
+  // listras do tronco: do recorte do decote com o ombro (o ponto mais alto dele) até a barra
+  ext.listras = limitesListras(Math.max(...decote.map(q => q[1])));
+  for (let i = 0; i < n; i++) {
+    if (pc[i] === 1) continue;
+    const [x, y, z] = pos(i);
+    if (y < ext.L * .6) continue;
+    let d = 9; for (const q of decote) d = Math.min(d, (x - q[0]) ** 2 + (y - q[1]) ** 2 + (z - q[2]) ** 2);
+    gl[i] = Math.sqrt(d);
   }
   geo.userData.compManga = compr;
   geo.setAttribute('aPeca', new THREE.BufferAttribute(pc, 1));
