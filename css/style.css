@@ -302,3 +302,8 @@ dialog.done[open] .done-estrelas .estrela:nth-child(3){animation-delay:.85s}
 @media (max-width:420px){.done-camisa{grid-template-columns:1fr}.done-camisa img{max-width:220px;margin:0 auto}.done-in h2{font-size:40px}}
 @media (prefers-reduced-motion:reduce){dialog.done[open] .done-card,.done-faixa,.done-passos li.agora::before{animation:none}
   dialog.done[open] .done-estrelas .estrela{animation-duration:.01s;animation-delay:0s!important}}
+
+/* forma de pagamento (à vista / parcelado) */
+#fsPagto{margin:0 0 4px}
+.pix-nota{margin:-4px 0 0;padding:10px 12px;border-radius:10px;background:rgba(242,194,48,.08);border:1px solid rgba(242,194,48,.25);color:var(--text);font-size:14px;line-height:1.45}
+.total small{display:block;font:600 13px/1.3 var(--body);color:var(--muted);letter-spacing:0;text-align:right}

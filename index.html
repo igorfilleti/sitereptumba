@@ -147,7 +147,15 @@
     <header class="sec-head"><span class="sec-num" role="img" aria-label="Etapa 3"><svg class="estrela" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.6l3.1 6.6 7.2.9-5.3 5 1.4 7.2L12 17.8l-6.4 3.5 1.4-7.2-5.3-5 7.2-.9z"/></svg><b>3</b></span><div><h2>Pagamento</h2><p>Pague no Pix e anexe o comprovante para finalizar.</p></div></header>
     <div class="pay">
       <div class="card pix">
-        <div class="pix-top"><span class="pix-brand">Valor via Pix</span><strong class="price" id="price">R$ —</strong></div>
+        <fieldset class="field" id="fsPagto">
+          <legend>Forma de pagamento</legend>
+          <div class="seg">
+            <input type="radio" name="pagamento" id="pgVista" value="vista" checked><label for="pgVista">À vista</label>
+            <input type="radio" name="pagamento" id="pgParc" value="parcelado"><label for="pgParc" id="pgParcLabel">Parcelado em 2x</label>
+          </div>
+        </fieldset>
+        <div class="pix-top"><span class="pix-brand" id="priceLabel">Valor via Pix</span><strong class="price" id="price">R$ —</strong></div>
+        <p class="pix-nota" id="pixNota" hidden></p>
         <div class="qr" id="qr"></div>
         <div>
           <span class="label">Pix copia e cola</span>

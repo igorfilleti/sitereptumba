@@ -10,7 +10,7 @@ const ABA = 'Pedidos';
 const PASTA_COMPROVANTES = 'Comprovantes';
 const MAX_BYTES = 5 * 1024 * 1024;   // o site já limita a 5 MB
 const TIPOS_OK = /^(image\/|application\/pdf$)/;
-const CABECALHO = ['Pedido', 'Data', 'Nome', 'Apelido', 'WhatsApp', 'Nome na camisa', 'Número', 'Modelagem', 'Tamanho', 'Comprovante', 'Status'];
+const CABECALHO = ['Pedido', 'Data', 'Nome', 'Apelido', 'WhatsApp', 'Nome na camisa', 'Número', 'Modelagem', 'Tamanho', 'Comprovante', 'Status', 'Pagamento'];
 
 function doPost(e) {
   const lock = LockService.getScriptLock();
@@ -33,7 +33,7 @@ function doPost(e) {
     aba.appendRow([
       "'" + numero, data, limpo(p.nome), limpo(p.apelido), limpo(p.celular),
       limpo(p.camisaNome), limpo(p.camisaNumero), limpo(p.genero), limpo(p.tamanho),
-      arquivo.getUrl(), 'A conferir'
+      arquivo.getUrl(), 'A conferir', limpo(p.pagamento)
     ]);
     SpreadsheetApp.flush();
     return resposta({ ok: true, pedido: numero });
@@ -55,8 +55,9 @@ function abaPedidos() {
   if (aba.getLastRow() === 0) {
     aba.appendRow(CABECALHO);
     aba.setFrozenRows(1);
-    aba.getRange(1, 1, 1, CABECALHO.length).setFontWeight('bold');
   }
+  // planilha criada antes de uma coluna nova (ex.: "Pagamento"): completa o cabeçalho
+  aba.getRange(1, 1, 1, CABECALHO.length).setValues([CABECALHO]).setFontWeight('bold');
   return aba;
 }
 
