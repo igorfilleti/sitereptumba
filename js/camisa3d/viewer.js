@@ -160,7 +160,7 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
   canvas.style.touchAction = 'pan-y';                          // deixa rolar a página no celular
   Object.assign(controls, {
     enableDamping: true, dampingFactor: .07, rotateSpeed: .85,
-    enablePan: false, enableZoom: false, autoRotate: true, autoRotateSpeed: 1.6,
+    enablePan: false, enableZoom: false, autoRotate: false, autoRotateSpeed: 0,
     minPolarAngle: Math.PI / 2 - .5, maxPolarAngle: Math.PI / 2 + .25
   });
   let alvoAz = null, zoom = 1, zoomAlvo = 1, distBase = 2.6;
@@ -168,15 +168,24 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
   const alvoFoco = new THREE.Vector3();                          // para onde a câmera olha (o centro, ou o ponto do zoom)
   const hint = document.getElementById('hint');
   const esconderDica = () => { if (hint) hint.style.opacity = 0; };
-  controls.addEventListener('start', () => { controls.autoRotate = false; alvoAz = null; esconderDica(); });
-  const zoomPara = z => { zoomAlvo = Math.max(ZOOM.min, Math.min(ZOOM.max, z)); controls.autoRotate = false; esconderDica(); };
+  /* giro de descanso: a camisa gira sozinha, devagar, quando ninguém está prestando atenção nela
+     (sem mexer há alguns segundos, mouse fora dela, sem zoom e sem digitar nome/número) */
+  const GIRO = { ocioso: 4, velocidade: .8 };                    // segundos parado antes de girar; velocidade (≈ 1 volta a cada 75 s)
+  let ultimaAtencao = -Infinity, sobreCamisa = false, arrastando = false, rampaGiro = 0;
+  const atencao = () => { ultimaAtencao = performance.now(); };
+  const reduzirMovimento = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  canvas.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') sobreCamisa = true; });
+  canvas.addEventListener('pointerleave', () => { sobreCamisa = false; atencao(); });
+  controls.addEventListener('start', () => { arrastando = true; atencao(); alvoAz = null; esconderDica(); });
+  controls.addEventListener('end', () => { arrastando = false; atencao(); });
+  const zoomPara = z => { zoomAlvo = Math.max(ZOOM.min, Math.min(ZOOM.max, z)); atencao(); esconderDica(); };
 
   function showSide(lado) {
-    controls.autoRotate = false;
+    atencao();
     const az = controls.getAzimuthalAngle();
     alvoAz = lado === 'back' ? (az >= 0 ? Math.PI : -Math.PI) : 0;
   }
-  const stopSpin = () => { controls.autoRotate = false; };
+  const stopSpin = () => { atencao(); };
   document.querySelectorAll('[data-side]').forEach(b => b.addEventListener('click', () => showSide(b.dataset.side)));
   document.querySelectorAll('[data-zoom]').forEach(b => b.addEventListener('click', () => {
     const antes = zoomAlvo;
@@ -215,7 +224,7 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
   // e arrastar na vertical continua rolando a página
   let pinca = 0;
   const distDedos = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
-  canvas.addEventListener('touchstart', e => { if (e.touches.length === 2) { pinca = distDedos(e.touches); controls.autoRotate = false; esconderDica(); } }, { passive: true });
+  canvas.addEventListener('touchstart', e => { if (e.touches.length === 2) { pinca = distDedos(e.touches); atencao(); esconderDica(); } }, { passive: true });
   canvas.addEventListener('touchmove', e => {
     if (e.touches.length !== 2 || !pinca) return;
     e.preventDefault();                                          // a pinça é da camisa, não da página
@@ -226,7 +235,7 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
   canvas.addEventListener('touchend', e => { if (e.touches.length < 2) pinca = 0; });
   // voltar à visão inicial (botão discreto que só aparece quando a visão mudou)
   const botaoInicio = document.querySelector('[data-reset]');
-  function visaoInicial() { controls.autoRotate = false; alvoAz = 0; zoomAlvo = 1; alvoFoco.copy(centro); }
+  function visaoInicial() { atencao(); alvoAz = 0; zoomAlvo = 1; alvoFoco.copy(centro); }
   if (botaoInicio) botaoInicio.addEventListener('click', visaoInicial);
   canvas.addEventListener('dblclick', visaoInicial);             // duplo clique na camisa também volta
   let alterada = false;
@@ -267,19 +276,24 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
     if (!ativa) s[0] = s[1] = 0;
     return ativa;
   };
-  let azAnterior = null, phiAnterior = null, giroAuto = 0;
+  let azAnterior = null, phiAnterior = null;
   chao.material.opacity = .5;
 
   renderer.setAnimationLoop(agora => {
     const dt = Math.min(.25, (agora - ultimo) / 1000); ultimo = agora;   // aceita quadros lentos sem travar as animações
     if (!visivel || !camisa) return;
 
-    // giro automático só na primeira volta; depois para de frente
+    // giro de descanso: entra e sai suave (a velocidade sobe e desce em ~1 s)
+    const digitando = document.activeElement && document.activeElement.matches && document.activeElement.matches('#camisaNome,#camisaNumero');
+    const descansando = !reduzirMovimento && !sobreCamisa && !arrastando && !digitando && alvoAz === null && zoomAlvo >= .98 && agora - ultimaAtencao > GIRO.ocioso * 1000;
+    rampaGiro += ((descansando ? 1 : 0) - rampaGiro) * Math.min(1, dt * 1.5);
+    if (!descansando && rampaGiro < .01) rampaGiro = 0;
+    controls.autoRotate = rampaGiro > 0;
+    controls.autoRotateSpeed = GIRO.velocidade * rampaGiro;
     const az = controls.getAzimuthalAngle();
     let dAz = azAnterior === null ? 0 : az - azAnterior;
     if (dAz > Math.PI) dAz -= 2 * Math.PI; else if (dAz < -Math.PI) dAz += 2 * Math.PI;
     azAnterior = az;
-    if (controls.autoRotate && (giroAuto += Math.abs(dAz)) > 2 * Math.PI) { controls.autoRotate = false; alvoAz = 0; }
 
     // molas: alvo proporcional à velocidade do giro / da inclinação; o pano persegue o alvo e oscila até assentar
     // (a câmera girando equivale à camisa girando ao contrário: a barra fica para trás no sentido da câmera)
