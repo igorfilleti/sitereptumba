@@ -290,7 +290,7 @@ function pesosBalanco(geo, ext) {
   for (let i = 0; i < p.count; i++) {
     const k = pc.getX(i);
     if (k === 0 || gl.getX(i) < ext.golaFaixa) w[i] = 0;
-    else if (k === 1) w[i] = .9 * Math.pow(1 - dm.getX(i), 1.3);              // a boca da manga balança mais
+    else if (k === 1) w[i] = .3 * Math.pow(1 - dm.getX(i), 2);                // a boca da manga balança só um pouco; perto da costura quase nada (não abre a emenda com o tronco)
     else w[i] = Math.pow(1 - suave(0, ext.L * .8, p.getY(i)), 1.6);                    // do peito (preso) à barra (solta)
   }
   geo.setAttribute('aBalanco', new THREE.BufferAttribute(w, 1));
