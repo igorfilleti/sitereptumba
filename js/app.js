@@ -60,7 +60,7 @@ const Shirt = (() => {
     console.error('Camisa 3D:', err);
     msg.textContent = 'Não foi possível abrir a visualização 3D, mas você pode continuar o pedido normalmente.';
   };
-  import('./camisa3d/viewer.js?v=20261008f')
+  import('./camisa3d/viewer.js?v=20261008g')
     .then(m => {
       real = m.createShirt($('#shirt3d'), { onPronto: () => { msg.hidden = true; }, onErro: falhou });
       for (const [k, a] of Object.entries(fila)) real[k](...a);
@@ -319,6 +319,9 @@ form.addEventListener('submit', async e => {
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Enviando…';
   try {
     payload.arquivo = { nome: state.file.name, tipo: state.file.type, base64: await readB64(state.file) };
+    // foto da camisa (costas): vai no e-mail de confirmação e aparece na tela de pedido confirmado
+    fotoCamisa = Shirt.foto();
+    if (fotoCamisa) payload.foto = fotoCamisa.split(',')[1];
     // só confirma o pedido quando a planilha responde que gravou; qualquer falha vira erro na tela
     if (!CONFIG.scriptUrl) throw new Error('Os pedidos ainda não estão sendo recebidos. Fale com a Rep. Tumba antes de pagar.');
     const espera = new AbortController(), limite = setTimeout(() => espera.abort(), 45000);
@@ -342,6 +345,7 @@ form.addEventListener('submit', async e => {
   }
 });
 /* tela de pedido confirmado: ficha do pedido, foto da camisa (o próprio 3D, de costas) e confete */
+let fotoCamisa = null;
 function mostrarConfirmacao(p) {
   $('#doneText').textContent = `Valeu, ${p.apelido}! Sua listradinha já está em produção.`;
   $('#doneNome').textContent = p.camisaNome;
@@ -349,7 +353,7 @@ function mostrarConfirmacao(p) {
   $('#doneMod').textContent = p.genero === 'Feminino' ? 'Feminina' : 'Masculina';
   $('#doneTam').textContent = p.tamanho;
   $('#doneValor').textContent = CONFIG.preco ? p.pagamento : '—';
-  const foto = Shirt.foto(), img = $('#doneFoto');
+  const foto = fotoCamisa || Shirt.foto(), img = $('#doneFoto');
   if (foto) { img.src = foto; img.hidden = false; }
   $('#done').showModal();
   confete($('#confete'));
