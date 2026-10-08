@@ -7,6 +7,7 @@
 const CONFIG = {
   scriptUrl: 'https://script.google.com/macros/s/AKfycbxQU2ZrO2DjPgJ-5V5r7rlZt6400BudHFAWJlm9pUNpNo74GIUleucVbCt4ogtCRr0oSw/exec',   // URL do App da Web do Google Apps Script (termina em /exec)
   preco: 120,             // valor da camisa em reais, ex.: 120
+  parcelas: 2,            // parcelamento: em quantas vezes (o Pix da 1ª parcela é gerado com preco ÷ parcelas)
   pix: {
     chave: 'f605963b-7532-47ee-95cd-1e67afe4041b',   // chave aleatória; chave Pix. Celular no formato +5519999999999
     nome: 'FELIPE DOS S MODESTO',   // nome de quem recebe (como aparece no banco)
@@ -41,7 +42,7 @@ const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const brl = v => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
-const state = { genero: '', idx: -1, nome: '', numero: '', file: null };
+const state = { genero: '', idx: -1, nome: '', numero: '', file: null, pagamento: 'vista' };
 const gKey = () => (state.genero === 'Feminino' ? 'F' : 'M');
 const sizeRow = () => TAMANHOS[gKey()][state.idx >= 0 ? state.idx : 2];
 
@@ -93,14 +94,30 @@ function qrSvg(text) {
   for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) d += `M${c} ${r}h1v1h-1z`;
   return `<svg viewBox="0 0 ${n} ${n}" shape-rendering="crispEdges" role="img" aria-label="QR Code Pix"><path d="${d}" fill="#0b0b0b"/></svg>`;
 }
-(function setupPix() {
-  const code = CONFIG.pix.copiaECola.trim() || (CONFIG.pix.chave.trim() ? pixPayload({ ...CONFIG.pix, valor: CONFIG.preco }) : '');
-  $('#price').textContent = CONFIG.preco > 0 ? brl(CONFIG.preco) : 'R$ —';
-  if (CONFIG.preco > 0) $('#heroPrice').innerHTML = `${brl(CONFIG.preco)}<small>no Pix</small>`;
+/* à vista: o código do banco (R$ cheio); parcelado: Pix da 1ª parcela, gerado com o valor dela */
+const PARCELA = CONFIG.parcelas > 1 ? Math.round(CONFIG.preco / CONFIG.parcelas * 100) / 100 : 0;
+const textoParcelas = () => (PARCELA ? `ou ${CONFIG.parcelas}x de ${brl(PARCELA)}` : '');
+const textoPagamento = forma => (forma === 'parcelado' ? `${CONFIG.parcelas}x de ${brl(PARCELA)}` : `${brl(CONFIG.preco)} à vista`);
+function codigoPix(forma) {
+  if (forma === 'parcelado') return CONFIG.pix.chave.trim() ? pixPayload({ ...CONFIG.pix, valor: PARCELA }) : '';
+  return CONFIG.pix.copiaECola.trim() || (CONFIG.pix.chave.trim() ? pixPayload({ ...CONFIG.pix, valor: CONFIG.preco }) : '');
+}
+function setupPix() {
+  const forma = state.pagamento, parc = forma === 'parcelado', code = codigoPix(forma);
+  $('#priceLabel').textContent = parc ? `1ª de ${CONFIG.parcelas} parcelas via Pix` : 'Valor via Pix';
+  $('#price').textContent = CONFIG.preco > 0 ? brl(parc ? PARCELA : CONFIG.preco) : 'R$ —';
+  const nota = $('#pixNota');
+  nota.hidden = !parc;
+  if (parc) nota.textContent = `Total de ${brl(CONFIG.preco)} em ${CONFIG.parcelas}x de ${brl(PARCELA)}. Pague agora a 1ª parcela; a 2ª a gente combina com você pelo WhatsApp.`;
   $('#pixKey').textContent = CONFIG.pix.chave || '—';
   $('#pixCode').textContent = code || '—';
   $('#qr').innerHTML = code ? qrSvg(code) : '<div class="empty">O QR Code aparece aqui quando a chave Pix for configurada.</div>';
-})();
+}
+if (CONFIG.preco > 0) $('#heroPrice').innerHTML = `${brl(CONFIG.preco)}<small>no Pix${PARCELA ? ' · ' + textoParcelas() : ''}</small>`;
+if (!PARCELA) $('#fsPagto').hidden = true;
+else $('#pgParcLabel').textContent = `${CONFIG.parcelas}x de ${brl(PARCELA)}`;
+setupPix();
+$$('input[name=pagamento]').forEach(i => i.addEventListener('change', () => { state.pagamento = i.value; setupPix(); updateSummary(); }));
 $$('[data-copy]').forEach(b => b.addEventListener('click', async () => {
   const t = $('#' + b.dataset.copy).textContent; if (!t || t === '—') return;
   try { await navigator.clipboard.writeText(t); }
@@ -193,7 +210,7 @@ function renderSizes() {
   const g = gKey(), list = TAMANHOS[g];
   $('#sizes').innerHTML = list.map((s, i) => {
     const [main, sub] = s.t.split(' ');
-    return `<input type="radio" name="tamanho" id="t${i}" value="${s.t}" ${i === state.idx ? 'checked' : ''}><label for="t${i}"><b>${main}</b>${sub ? `<small>${sub}</small>` : '<small>&nbsp;</small>'}</label>`;
+    return `<input type="radio" name="tamanho" id="t${i}" value="${s.t}" ${i === state.idx ? 'checked' : ''}><label for="t${i}"><b>${main}</b>${sub ? `<small>${sub}</small>` : ''}</label>`;
   }).join('');
   $$('#sizes input').forEach(r => r.addEventListener('change', () => {
     state.idx = +r.id.slice(1); if ($('#fsTamanho').classList.contains('invalid')) checkTamanho(); refreshModel();
@@ -253,7 +270,7 @@ function updateSummary() {
     row('Nas costas', state.nome && state.numero ? `${state.nome} · ${state.numero}` : '') +
     row('Modelagem', state.genero && s ? `${state.genero === 'Feminino' ? 'Feminina' : 'Masculina'} · ${s}` : '') +
     row('Comprovante', state.file ? 'anexado' : '') +
-    (CONFIG.preco > 0 ? `<dt>Total</dt><dd class="total">${brl(CONFIG.preco)}</dd>` : '');
+    (CONFIG.preco > 0 ? `<dt>Total</dt><dd class="total">${brl(CONFIG.preco)}${PARCELA ? `<small>${state.pagamento === 'parcelado' ? `em ${CONFIG.parcelas}x de ${brl(PARCELA)}` : textoParcelas()}</small>` : ''}</dd>` : '');
 }
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -294,7 +311,8 @@ form.addEventListener('submit', async e => {
   const payload = {
     nome: el.nome.value.trim(), apelido: el.apelido.value.trim(), celular: el.celular.value,
     camisaNome: state.nome, camisaNumero: state.numero,
-    genero: state.genero, tamanho: TAMANHOS[gKey()][state.idx].t
+    genero: state.genero, tamanho: TAMANHOS[gKey()][state.idx].t,
+    pagamento: textoPagamento(state.pagamento)
   };
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Enviando…';
   try {
@@ -323,13 +341,12 @@ form.addEventListener('submit', async e => {
 });
 /* tela de pedido confirmado: ficha do pedido, foto da camisa (o próprio 3D, de costas) e confete */
 function mostrarConfirmacao(p) {
-  $('#doneText').textContent = `Valeu, ${p.apelido}! Sua listradinha está a caminho.`;
+  $('#doneText').textContent = `Valeu, ${p.apelido}! Sua listradinha já está em produção.`;
   $('#doneNome').textContent = p.camisaNome;
   $('#doneNum').textContent = p.camisaNumero;
   $('#doneMod').textContent = p.genero === 'Feminino' ? 'Feminina' : 'Masculina';
   $('#doneTam').textContent = p.tamanho;
-  $('#doneValor').textContent = CONFIG.preco ? brl(CONFIG.preco) : '—';
-  $('#doneZap').textContent = `Chamamos você no WhatsApp ${p.celular} para combinar a entrega.`;
+  $('#doneValor').textContent = CONFIG.preco ? p.pagamento : '—';
   const foto = Shirt.foto(), img = $('#doneFoto');
   if (foto) { img.src = foto; img.hidden = false; }
   $('#done').showModal();

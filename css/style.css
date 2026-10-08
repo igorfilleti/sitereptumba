@@ -287,18 +287,14 @@ dialog.done[open] .done-estrelas .estrela:nth-child(3){animation-delay:.85s}
 .done-ficha div:last-child{border:0;padding:0}
 .done-ficha dt{color:var(--muted);font:600 12px/1.6 var(--cond);letter-spacing:.12em;text-transform:uppercase}
 .done-ficha dd{margin:0;font:800 18px/1.2 var(--display);letter-spacing:.04em;text-align:right;overflow-wrap:anywhere}
-/* próximos passos */
-.done-passos{list-style:none;margin:18px 0 0;padding:0;text-align:left;counter-reset:p}
-.done-passos li{position:relative;padding:0 0 14px 40px;counter-increment:p}
-.done-passos li::before{content:counter(p);position:absolute;left:0;top:0;width:26px;height:26px;display:grid;place-items:center;border-radius:50%;
   border:1px solid var(--line-2);color:var(--muted);font:800 14px/1 var(--display)}
-.done-passos li:not(:last-child)::after{content:"";position:absolute;left:13px;top:30px;bottom:2px;width:1px;background:var(--line-2)}
-.done-passos li.feito::before{content:"✓";background:var(--ok);border-color:var(--ok);color:#06140b}
-.done-passos li.agora::before{border-color:#f2c230;color:#f2c230;box-shadow:0 0 0 0 rgba(242,194,48,.5);animation:pulsa 1.8s ease-out infinite}
-@keyframes pulsa{70%{box-shadow:0 0 0 9px rgba(242,194,48,0)}100%{box-shadow:0 0 0 0 rgba(242,194,48,0)}}
-.done-passos b{display:block;font:700 16px/1.3 var(--cond);letter-spacing:.04em;text-transform:uppercase}
-.done-passos span{display:block;color:var(--muted);font-size:14px}
-.done-guarde{color:var(--dim);font-size:13px;margin:6px 0 16px}
 @media (max-width:420px){.done-camisa{grid-template-columns:1fr}.done-camisa img{max-width:220px;margin:0 auto}.done-in h2{font-size:40px}}
-@media (prefers-reduced-motion:reduce){dialog.done[open] .done-card,.done-faixa,.done-passos li.agora::before{animation:none}
+@media (prefers-reduced-motion:reduce){dialog.done[open] .done-card,.done-faixa{animation:none}
   dialog.done[open] .done-estrelas .estrela{animation-duration:.01s;animation-delay:0s!important}}
+
+/* forma de pagamento (à vista / parcelado) */
+#fsPagto{margin:0 0 4px}
+.pix-nota{margin:-4px 0 0;padding:10px 12px;border-radius:10px;background:rgba(242,194,48,.08);border:1px solid rgba(242,194,48,.25);color:var(--text);font-size:14px;line-height:1.45}
+.total small{display:block;font:600 13px/1.3 var(--body);color:var(--muted);letter-spacing:0;text-align:right}
+
+#doneBtn{margin-top:20px}

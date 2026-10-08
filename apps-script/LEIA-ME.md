@@ -37,8 +37,8 @@ scriptUrl: 'https://script.google.com/macros/s/.../exec',
 ## Como fica
 
 - **Aba Pedidos:** Pedido (0001, 0002…), Data, Nome, Apelido, WhatsApp, Nome na camisa, Número,
-  Modelagem, Tamanho, link do Comprovante e Status (começa em "A conferir"; mude para "Pago",
-  "Produzindo", "Entregue"…).
+  Modelagem, Tamanho, link do Comprovante, Status (começa em "A conferir"; mude para "Pago",
+  "Produzindo", "Entregue"…) e Pagamento ("R$ 120,00 à vista" ou "2x de R$ 60,00").
 - **Pasta Comprovantes:** cada arquivo com o número do pedido e o nome da pessoa
   (ex.: `0001 - João da Silva.jpg`).
 - No site, a pessoa só vê "Pedido confirmado" quando a planilha gravou de verdade; se algo

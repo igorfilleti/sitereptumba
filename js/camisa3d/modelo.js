@@ -157,7 +157,7 @@ function prepararModelo(geo, ext, perfil) {
     const xMax = Math.max(...todas.map(i => sxl * p.getX(i))), borda = todas.filter(i => sxl * p.getX(i) > xMax * .6);
     const media = l => l.reduce((s, i) => [s[0] + p.getX(i) / l.length, s[1] + p.getY(i) / l.length, s[2] + p.getZ(i) / l.length], [0, 0, 0]);
     const A = media(borda);
-    let u = [0, 0, 0], proj = null, ini = 0, comp = 0;
+    let u = [0, 0, 0], proj = null, ini = 0, comp = 0, pontaQ = null;
     const eixo = B => {
       const e = [B[0] - A[0], B[1] - A[1], B[2] - A[2]], L = Math.hypot(...e); u = e.map(c => c / L);
       proj = q => (q[0] - A[0]) * u[0] + (q[1] - A[1]) * u[1] + (q[2] - A[2]) * u[2];
@@ -175,7 +175,7 @@ function prepararModelo(geo, ext, perfil) {
       // manga na largura do tronco). Assim as faixas dão a volta inteira na manga, também por baixo
       let ponta = null;
       for (const i of ids) if (Math.abs(sx * p.getX(i) - xCava) < .01 && (ponta === null || p.getY(i) > p.getY(ponta))) ponta = i;
-      comp = proj(pos(ponta)) - ini;
+      comp = proj(pos(ponta)) - ini; pontaQ = pos(ponta);
       // manga: dentro da volta do braço e para fora da linha vertical do ombro (a listra da gola vai até ela)
       // (a linha vertical só vale na altura da listra da gola; ela é conferida de novo no forno)
       for (const i of ids) pc[i] = proj(pos(i)) - ini < comp && sx * p.getX(i) >= xCava ? 1 : p.getZ(i) > 0 ? 2 : 3;
@@ -186,6 +186,15 @@ function prepararModelo(geo, ext, perfil) {
       // como na baby look: a fração vai da boca ao ponto da manga mais longe dela (alto da cava)
       let fim = -1e9; for (const i of ids) if (pc[i] === 1) fim = Math.max(fim, proj(pos(i)));
       comp = fim - ini;
+    }
+    if (perfil.mangaReal) {
+      // faixas paralelas à boca da manga: daqui em diante (faixas e logo) a medida ao longo da manga é
+      // pela normal do plano do punho. A costura acima já foi traçada com o eixo de antes e não muda
+      const nb = normalPlano(borda.map(pos));
+      u = (nb[0] * u[0] + nb[1] * u[1] + nb[2] * u[2] < 0) ? nb.map(c => -c) : nb;
+      proj = q => (q[0] - A[0]) * u[0] + (q[1] - A[1]) * u[1] + (q[2] - A[2]) * u[2];
+      ini = borda.reduce((t, i) => t + proj(pos(i)), 0) / borda.length;   // o punho todo na mesma altura
+      comp = proj(pontaQ) - ini;
     }
     compr.push(comp);
     const naManga = perfil.mangaReal ? ids : ids.filter(i => pc[i] === 1);
@@ -229,9 +238,9 @@ function prepararModelo(geo, ext, perfil) {
     for (let i = 0; i < n; i++) {
       const y = p.getY(i), t = Math.min(alturaOmbro, topoEm(p.getX(i)));
       const w = Math.min(1, Math.max(0, (y - base) / (alturaOmbro - base)));
-      // nas costas, a nuca não pode ficar mais alta que os lados (degrau): o centro desce até o nível de
-      // logo depois do pescoço, e a listra vermelha cobre esse pedaço
-      const queda = Math.max(0, alturaOmbro - t), quedaNuca = p.getZ(i) < 0 ? Math.max(0, alturaOmbro - Math.min(alturaOmbro, topoEm((xNeck + 5) * passo))) : 0;
+      // perto da gola (frente e costas) a listra não pode ficar mais alta que nos lados (degrau): o centro
+      // desce até o nível de logo depois do pescoço, e a listra vermelha cobre esse pedaço
+      const queda = Math.max(0, alturaOmbro - t), quedaNuca = Math.max(0, alturaOmbro - Math.min(alturaOmbro, topoEm((xNeck + 5) * passo)));
       yL[i] = y + Math.max(queda, quedaNuca) * w;
     }
     // borda de cima da listra do nome no meio das costas (onde aY = limite): a estampa centraliza o nome nela
@@ -254,6 +263,19 @@ function prepararModelo(geo, ext, perfil) {
   geo.setAttribute('dManga', new THREE.BufferAttribute(dm, 1));
   geo.setAttribute('aMangaUV', new THREE.BufferAttribute(mu, 2));
 }
+// normal do plano que melhor passa pelos pontos (direção de menor espalhamento)
+function normalPlano(pts) {
+  const m = [0, 1, 2].map(k => pts.reduce((t, q) => t + q[k], 0) / pts.length);
+  const C = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+  for (const q of pts) for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) C[a][b] += (q[a] - m[a]) * (q[b] - m[b]);
+  const tr = C[0][0] + C[1][1] + C[2][2];
+  let v = [.3, .5, .8];
+  for (let it = 0; it < 200; it++) {   // iteração de potência em (tr·I − C): converge para o menor autovetor de C
+    const w = [0, 1, 2].map(a => tr * v[a] - (C[a][0] * v[0] + C[a][1] * v[1] + C[a][2] * v[2]));
+    const l = Math.hypot(...w); v = w.map(c => c / l);
+  }
+  return v;
+}
 const ESCALA_REAL_F = .806;   // real → modelo (medida da manga real de 28,2 cm num modelo de 74 cm)
 
 /* ---------- física leve do pano (mola) ----------
@@ -268,7 +290,7 @@ function pesosBalanco(geo, ext) {
   for (let i = 0; i < p.count; i++) {
     const k = pc.getX(i);
     if (k === 0 || gl.getX(i) < ext.golaFaixa) w[i] = 0;
-    else if (k === 1) w[i] = .9 * Math.pow(1 - dm.getX(i), 1.3);              // a boca da manga balança mais
+    else if (k === 1) w[i] = .3 * Math.pow(1 - dm.getX(i), 2);                // a boca da manga balança só um pouco; perto da costura quase nada (não abre a emenda com o tronco)
     else w[i] = Math.pow(1 - suave(0, ext.L * .8, p.getY(i)), 1.6);                    // do peito (preso) à barra (solta)
   }
   geo.setAttribute('aBalanco', new THREE.BufferAttribute(w, 1));

@@ -40,7 +40,7 @@
       <h1>A listradinha<br><em>mais querida do interior</em></h1>
       <p class="lead">Personalizada com o seu nome e número. Monte o pedido em três passos e pague no Pix.</p>
       <div class="hero-cta">
-        <a class="btn" href="#dados">Montar meu pedido <span class="arrow">→</span></a>
+        <a class="btn" href="#dados">Quero minha listradinha <span class="arrow">→</span></a>
         <span class="price-tag" id="heroPrice"></span>
       </div>
       <div class="scroll-cue">Role para começar</div>
@@ -147,7 +147,15 @@
     <header class="sec-head"><span class="sec-num" role="img" aria-label="Etapa 3"><svg class="estrela" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.6l3.1 6.6 7.2.9-5.3 5 1.4 7.2L12 17.8l-6.4 3.5 1.4-7.2-5.3-5 7.2-.9z"/></svg><b>3</b></span><div><h2>Pagamento</h2><p>Pague no Pix e anexe o comprovante para finalizar.</p></div></header>
     <div class="pay">
       <div class="card pix">
-        <div class="pix-top"><span class="pix-brand">Valor via Pix</span><strong class="price" id="price">R$ —</strong></div>
+        <fieldset class="field" id="fsPagto">
+          <legend>Forma de pagamento</legend>
+          <div class="seg">
+            <input type="radio" name="pagamento" id="pgVista" value="vista" checked><label for="pgVista">À vista</label>
+            <input type="radio" name="pagamento" id="pgParc" value="parcelado"><label for="pgParc" id="pgParcLabel">Parcelado em 2x</label>
+          </div>
+        </fieldset>
+        <div class="pix-top"><span class="pix-brand" id="priceLabel">Valor via Pix</span><strong class="price" id="price">R$ —</strong></div>
+        <p class="pix-nota" id="pixNota" hidden></p>
         <div class="qr" id="qr"></div>
         <div>
           <span class="label">Pix copia e cola</span>
@@ -214,22 +222,14 @@
     <div class="done-camisa">
       <img id="doneFoto" alt="Sua camisa personalizada, vista de costas" hidden>
       <dl class="done-ficha">
-        <div><dt>Nas costas</dt><dd id="doneNome"></dd></div>
+        <div><dt>Nome</dt><dd id="doneNome"></dd></div>
         <div><dt>Número</dt><dd id="doneNum"></dd></div>
-        <div><dt>Modelagem</dt><dd id="doneMod"></dd></div>
+        <div><dt>Modelo</dt><dd id="doneMod"></dd></div>
         <div><dt>Tamanho</dt><dd id="doneTam"></dd></div>
         <div><dt>Valor</dt><dd id="doneValor"></dd></div>
       </dl>
     </div>
 
-    <ol class="done-passos">
-      <li class="feito"><b>Pedido recebido</b><span>Seus dados e o comprovante chegaram para a Rep.</span></li>
-      <li class="agora"><b>Conferência do Pix</b><span>Vamos confirmar o pagamento.</span></li>
-      <li><b>Contato no WhatsApp</b><span id="doneZap">Chamamos você para combinar a entrega.</span></li>
-      <li><b>Produção e entrega</b><span>Sua listradinha fica pronta e vai para as suas mãos.</span></li>
-    </ol>
-
-    <p class="done-guarde">Guarde o número do pedido. Se precisar falar com a gente, é só informar.</p>
     <button type="button" class="btn btn-block" id="doneBtn">Fazer outro pedido</button>
   </div>
   </div>
