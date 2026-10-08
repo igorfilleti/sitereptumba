@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.min.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.min.js';
-import { DESIGN, COR, limitesListras } from './estampa.js?v=20261008b';
+import { DESIGN, COR, limitesListras } from './estampa.js?v=20261008c';
 
 /* trama do tecido dry-fit (mapa de normais gerado por código, repetido pelo molde) */
 function trama() {
