@@ -366,7 +366,10 @@ function prepararFeminina(geo, ext, perfil) {
     for (let i = 0; i < n; i++) {
       const y = p.getY(i), t = Math.min(alturaOmbro, topoEm(p.getX(i)));
       const w = Math.min(1, Math.max(0, (y - base) / (alturaOmbro - base)));
-      yL[i] = y + Math.max(0, alturaOmbro - t) * w;
+      // nas costas, a nuca não pode ficar mais alta que os lados (degrau): o centro desce até o nível de
+      // logo depois do pescoço, e a listra vermelha cobre esse pedaço
+      const queda = Math.max(0, alturaOmbro - t), quedaNuca = p.getZ(i) < 0 ? Math.max(0, alturaOmbro - Math.min(alturaOmbro, topoEm((xNeck + 5) * passo))) : 0;
+      yL[i] = y + Math.max(queda, quedaNuca) * w;
     }
     geo.setAttribute('aY', new THREE.BufferAttribute(yL, 1));
   }
