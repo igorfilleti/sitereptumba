@@ -62,7 +62,7 @@ a{color:inherit}
 .hero-in{display:grid;grid-template-columns:1.1fr .9fr;gap:24px;align-items:center;min-height:min(70vh,620px)}
 .kicker{display:inline-flex;align-items:center;gap:10px;margin:0 0 14px;font:700 15px/1 var(--cond);letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
 .kicker .stars{color:#f4c430;letter-spacing:.1em}
-.hero h1{margin:0;font:400 clamp(38px,7.8vw,90px)/.98 var(--destaque);text-transform:uppercase;letter-spacing:-.01em}
+.hero h1{margin:0;font:900 clamp(64px,13vw,150px)/.84 var(--display);text-transform:uppercase;letter-spacing:-.01em}
 .hero h1 em{font-style:normal;color:transparent;-webkit-text-stroke:2px var(--red-hi);text-shadow:0 0 34px rgba(255,42,54,.35)}
 .lead{max-width:440px;margin:22px 0 28px;color:var(--muted);font-size:18px}
 .hero-cta{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
