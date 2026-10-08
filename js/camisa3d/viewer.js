@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { carregarModelo, criarForno, ALTURA, BALANCO } from './modelo.js';
+import { carregarModelo, criarForno, referencia, BALANCO } from './modelo.js';
 import { criarEstampa } from './estampa.js';
 
 const MOBILE = Math.min(screen.width, screen.height) < 600;
@@ -61,13 +61,13 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
   camera.position.set(0, .12, 2.6);
 
   /* ---------- camisa ---------- */
-  const estampa = criarEstampa(MOBILE ? 768 : 1024);
   const grupo = new THREE.Group(); scene.add(grupo);
   const chao = sombra(); scene.add(chao);
   const img = {};
-  let modelo = null, forno = null, camisa = null, texto = { nome: '', numero: '' };
+  // modelo, forno, estampa e camisa: os da modelagem escolhida (masculina ou baby look)
+  let modelo = null, forno = null, estampa = null, camisa = null, texto = { nome: '', numero: '' };
   const escala = new THREE.Vector3(1, 1, 1), escalaAlvo = new THREE.Vector3(1, 1, 1);
-  const REF = [52, ALTURA * 100];                               // o modelo é um M masculino (52 × 74 cm)
+  const modelos = {}, pedidos = {}; let gAtual = 'M', medidas = null;
 
   let sujo = true;                                              // pede um novo quadro
   // completo = false: só nome/número mudaram (a parte fixa da estampa e os mapas são reaproveitados)
@@ -89,28 +89,45 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
   }
   if (document.fonts) for (const f of [`800 80px "Saira Extra Condensed"`, `700 80px "Rajdhani"`, `800 80px "Saira Condensed"`]) document.fonts.load(f).then(() => pedirDesenho(false), () => {});
 
-  carregarModelo().then(m => {
-    modelo = m;
-    forno = criarForno(renderer, m.geo, m.ext, estampa.telas, MOBILE ? 1536 : 2048);
-    m.material.map = forno.textura;
-    m.material.bumpMap = forno.relevo;                // bordados em alto-relevo
+  // carrega cada modelagem só quando ela é escolhida pela primeira vez
+  function carregar(g) {
+    return pedidos[g] ||= carregarModelo(g).then(m => {
+    const est = criarEstampa(MOBILE ? 768 : 1024);
+    const fr = criarForno(renderer, m.geo, m.ext, est.telas, MOBILE ? 1536 : 2048);
+    m.material.map = fr.textura;
+    m.material.bumpMap = fr.relevo;                   // bordados em alto-relevo
     m.material.bumpScale = RELEVO;
-    m.material.roughnessMap = forno.rugosidade;       // a borracha do "icone" é mais lisa que o tecido
-    camisa = new THREE.Mesh(m.geo, m.material);
-    camisa.castShadow = camisa.receiveShadow = true;    // a camisa faz sombra nela mesma (mangas, dobras)
-    camisa.customDepthMaterial = m.profundidade;        // a sombra acompanha o balanço do pano
-    camisa.position.y = -m.ext.L / 2;
-    const pivo = new THREE.Group(); pivo.add(camisa); grupo.add(pivo);
-    camisa = pivo;
+    m.material.roughnessMap = fr.rugosidade;       // a borracha do "icone" é mais lisa que o tecido
+    const malha = new THREE.Mesh(m.geo, m.material);
+    malha.castShadow = malha.receiveShadow = true;    // a camisa faz sombra nela mesma (mangas, dobras)
+    malha.customDepthMaterial = m.profundidade;       // a sombra acompanha o balanço do pano
+    malha.position.y = -m.ext.L / 2;
+    const pivo = new THREE.Group(); pivo.add(malha); pivo.visible = false; grupo.add(pivo);
+    modelos[g] = { modelo: m, forno: fr, estampa: est, camisa: pivo };
+    if (g === gAtual) mostrar(g);
+    });
+  }
+  function mostrar(g) {
+    const x = modelos[g]; if (!x) return;
+    if (camisa) camisa.visible = false;
+    ({ modelo, forno, estampa, camisa } = x);
+    camisa.visible = true;
+    if (medidas) escalaAlvo.copy(escalaDe(g, ...medidas));
+    escala.copy(escalaAlvo).multiplyScalar(.95);                 // pequeno "respiro" ao trocar a modelagem
     redesenhar();
     ajustarCamera();
-  }).catch(err => { console.error('Camisa 3D:', err); onErro(err); });
+  }
+  const escalaDe = (g, a, c) => { const R = referencia(g); return new THREE.Vector3(a / R[0], c / R[1], a / R[0]); };
+  carregar('M').catch(err => { console.error('Camisa 3D:', err); onErro(err); });
 
   function setModel(g, a, c) {
-    const novo = new THREE.Vector3(a / REF[0], c / REF[1], a / REF[0]);
-    if (camisa && g !== setModel.g) escala.multiplyScalar(.95);  // pequeno "respiro" ao trocar a modelagem
-    setModel.g = g;
-    escalaAlvo.copy(novo);
+    g = g === 'F' ? 'F' : 'M'; medidas = [a, c];
+    escalaAlvo.copy(escalaDe(g, a, c));
+    if (g !== gAtual) {
+      gAtual = g;
+      if (modelos[g]) mostrar(g);
+      else carregar(g).catch(err => { console.error('Camisa 3D:', err); onErro(err); });
+    }
     sujo = true;
   }
   function setText(nome, numero) { texto = { nome, numero }; pedirDesenho(false); }
