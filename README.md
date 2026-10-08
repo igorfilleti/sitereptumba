@@ -26,6 +26,11 @@ Os pedidos vão para uma planilha e os comprovantes para uma pasta do seu Google
 Passo a passo em [apps-script/LEIA-ME.md](apps-script/LEIA-ME.md). Enquanto o endereço do script
 não estiver em `CONFIG.scriptUrl` (js/app.js), o site recusa o envio e avisa a pessoa.
 
+## Ao publicar uma versão nova
+
+Troque o número `?v=...` (em `index.html`, `js/app.js` e `js/camisa3d/*.js`) pela data do dia.
+Assim os celulares baixam os arquivos novos na hora, em vez de usar a cópia guardada.
+
 ## Estrutura
 
 ```
