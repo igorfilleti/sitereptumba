@@ -6,10 +6,10 @@
    Medidas em metros: y = 0 na barra, x > 0 = lado esquerdo de quem veste.
    ===================================================================== */
 export const COR = { branco: '#f5f5f3', vermelho: '#e3141c', preto: '#111111' };
-// número das costas: Saira Condensed ExtraBold, a mais próxima do "600" da camisa real (traço grosso,
-// 0 de laterais retas com miolo estreito, 6 com braço reto); livre para uso comercial (OFL)
-const FONTE_NUM_COSTAS = '"Saira Condensed","Saira Extra Condensed","Arial Narrow",sans-serif';
-const FONTE_NUM = '"Saira Extra Condensed","Saira Condensed","Arial Narrow",sans-serif';
+// nome e número: a fonte da fabricante (amostra enviada pelo cliente) é a mesma nos dois; a gratuita
+// mais próxima é a Rajdhani Bold (letras quadradas de cantos arredondados, 0 em formato de estádio; OFL)
+const FONTE_NUM_COSTAS = '"Rajdhani","Saira Condensed","Arial Narrow",sans-serif';
+const FONTE_NUM = FONTE_NUM_COSTAS;
 // nome: Rajdhani Bold, a mais próxima da camisa real (letras quadradas de cantos arredondados,
 // G com barra reta, A de topo reto, R de perna reta); livre para uso comercial (OFL, Google Fonts)
 const FONTE_NOME = '"Rajdhani","Saira Condensed","Arial Narrow",sans-serif';
@@ -210,7 +210,7 @@ export function criarEstampa(resolucao = 1024) {
       const N = DESIGN.costas.numero, e = ext.escalaReal || 1, g = gC;
       const alt = fundo !== undefined ? topo - fundo : N.altReal * e, prop = alt / N.altReal;   // prop: real → modelo
       const borda = N.bordaReal * prop;
-      g.letterSpacing = '0px'; g.font = `800 100px ${FONTE_NUM_COSTAS}`;
+      g.letterSpacing = '0px'; g.font = `700 100px ${FONTE_NUM_COSTAS}`;
       const m0 = g.measureText('0'), sy = alt / (m0.actualBoundingBoxAscent + m0.actualBoundingBoxDescent);
       let sx = N.largReal * prop / (m0.actualBoundingBoxLeft + m0.actualBoundingBoxRight), gap = N.espacoReal * prop;
       const dig = [...str].map(c => { const m = g.measureText(c); return { c, esq: m.actualBoundingBoxLeft, larg: m.actualBoundingBoxLeft + m.actualBoundingBoxRight, sobe: m.actualBoundingBoxAscent }; });
@@ -224,7 +224,7 @@ export function criarEstampa(resolucao = 1024) {
           const passos = raio ? 24 : 1;
           for (let a = 0; a < passos; a++) for (const r of raio ? [raio, raio * .5] : [0]) {
             g.save(); g.translate(X0 + Math.cos(a / passos * 2 * Math.PI) * r, Y0 + Math.sin(a / passos * 2 * Math.PI) * r);
-            g.scale(sx * k, sy * k); g.font = `800 100px ${FONTE_NUM_COSTAS}`; g.fillText(d.c, d.esq, m0.actualBoundingBoxAscent); g.restore();   // todos na linha de base do 0 (letras e símbolos alinham com os números)
+            g.scale(sx * k, sy * k); g.font = `700 100px ${FONTE_NUM_COSTAS}`; g.fillText(d.c, d.esq, m0.actualBoundingBoxAscent); g.restore();   // todos na linha de base do 0 (letras e símbolos alinham com os números)
           }
           x -= d.larg * sx + gap;
         }
@@ -321,14 +321,18 @@ export function criarEstampa(resolucao = 1024) {
     const lN = listra('vermelha', F.numero.listra), yN = lN.meio;
     {
       // largura pela tinta do número (não pelo espaço da fonte), centralizado por ela
-      gF.letterSpacing = '0px'; gF.font = `800 ${F.numero.alt * k / .72}px ${FONTE_NUM}`;
-      const m = gF.measureText(num), tinta = (m.actualBoundingBoxLeft + m.actualBoundingBoxRight) / k;
+      gF.letterSpacing = '0px'; gF.font = `700 ${F.numero.alt * k / .72}px ${FONTE_NUM}`;
+      // dígitos estreitos na mesma proporção do número das costas (9,4 × 24,85 cm reais)
+      const m0 = gF.measureText('0'), N = DESIGN.costas.numero;
+      const sx = (N.largReal / N.altReal) / ((m0.actualBoundingBoxLeft + m0.actualBoundingBoxRight) / (m0.actualBoundingBoxAscent + m0.actualBoundingBoxDescent));
+      const m = gF.measureText(num), tinta = (m.actualBoundingBoxLeft + m.actualBoundingBoxRight) * sx / k;
       // o quadro passa 2 mm para dentro das brancas de cima e de baixo: cobre a transição suavizada das
       // listras e funde com o tecido (sem a linha fina fechando o quadrado)
       quadro('frente', 0, yN, tinta + 2 * F.numero.margemReal * (ext.escalaReal || 1), lN.topo - lN.baixo + .004);
       const [Xc, Yc] = pos.frente(0, yN);
       gF.textAlign = 'left'; gF.textBaseline = 'alphabetic'; gF.fillStyle = COR.preto;
-      gF.fillText(num, Xc - tinta * k / 2 + m.actualBoundingBoxLeft, Yc + (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2);
+      gF.save(); gF.translate(Xc - tinta * k / 2, Yc + (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2); gF.scale(sx, 1);
+      gF.fillText(num, m.actualBoundingBoxLeft, 0); gF.restore();
     }
 
     // costas: nome e "Rep. Tumba" centralizados em listras brancas, número grande com borda branca
