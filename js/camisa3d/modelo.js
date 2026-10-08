@@ -257,7 +257,7 @@ function prepararFeminina(geo, ext, perfil) {
   const tipo = new Map();
   for (const s of [...ilhas.values()]) {
     const gr = grandes.find(q => q.r === s.r);
-    tipo.set(s.r, !gr ? (s.z / s.n > 0 ? 'frente' : 'costas') : mangas.includes(gr) ? (gr.cx > 0 ? 'mangaE' : 'mangaD') : gr.cz > 0 ? 'frente' : 'costas');
+    tipo.set(s.r, !gr ? 'gola' : mangas.includes(gr) ? (gr.cx > 0 ? 'mangaE' : 'mangaD') : gr.cz > 0 ? 'frente' : 'costas');
   }
   const tipoDe = i => tipo.get(raiz(i));
 
@@ -279,7 +279,9 @@ function prepararFeminina(geo, ext, perfil) {
   ext.escalaReal = ESCALA_REAL_F;
   ext.golaFaixa = DESIGN.gola.espessura * ext.escalaReal;
   const pc = new Float32Array(n), gl = new Float32Array(n).fill(9), dm = new Float32Array(n), mu = new Float32Array(n * 2).fill(99);
-  for (let i = 0; i < n; i++) { const t = tipoDe(i); pc[i] = t === 'frente' ? 2 : t === 'costas' ? 3 : 1; }
+  for (let i = 0; i < n; i++) { const t = tipoDe(i); pc[i] = t === 'gola' ? 0 : t === 'frente' ? 2 : t === 'costas' ? 3 : 1; }
+  // peças pequenas no alto (ribana da gola, fita da nuca): são a gola, inteira preta, e o tronco não leva faixa
+  const temGola = pc.includes(0);
 
   // mangas: eixo do centro da boca (a borda aberta; a cava é costurada no tronco) ao centro da manga
   const fr = listrasManga(), compr = [];
@@ -300,7 +302,13 @@ function prepararFeminina(geo, ext, perfil) {
       // até o comprimento real (em escala); o eixo é refeito só com essa parte, e o resto da peça vira tronco
       comp = DESIGN.real.manga * ext.escalaReal;
       eixo(media(ids.filter(i => proj(pos(i)) - ini < comp)));
-      for (const i of ids) if (proj(pos(i)) - ini > comp) pc[i] = p.getZ(i) > 0 ? 2 : 3;
+      // a costura real é a cava: vertical, na ponta do ombro. A ponta do ombro fica no alto da manga,
+      // a um comprimento de manga real da beirada de cima do punho
+      let fora = 1e9; for (const i of borda) fora = Math.min(fora, proj(pos(i)));
+      let topo = null;
+      for (const i of ids) if (Math.abs(proj(pos(i)) - fora - comp) < .01 && (topo === null || p.getY(i) > p.getY(topo))) topo = i;
+      const sx = Math.sign(A[0]), xCava = sx * p.getX(topo);
+      for (const i of ids) if (sx * p.getX(i) < xCava) pc[i] = p.getZ(i) > 0 ? 2 : 3;
     } else {
       // a fração vai da boca ao ponto da cava mais alto no ombro
       let fim = -1e9; for (const i of ids) fim = Math.max(fim, proj(pos(i)));
@@ -330,10 +338,11 @@ function prepararFeminina(geo, ext, perfil) {
 
   // decote: borda do tronco (já com o ombro da raglan) no alto, perto do meio
   const decote = [];
-  for (let i = 0; i < n; i++) if (naBorda[grupo[i]] && pc[i] !== 1 && p.getY(i) > ext.L * .75 && Math.abs(p.getX(i)) < ext.X * .5) decote.push(pos(i));
+  for (let i = 0; i < n; i++) if (naBorda[grupo[i]] && pc[i] >= 2 && p.getY(i) > ext.L * .75 && Math.abs(p.getX(i)) < ext.X * .5) decote.push(pos(i));
+  if (!decote.length) for (let i = 0; i < n; i++) if (pc[i] === 0) decote.push(pos(i));
   // listras do tronco: do recorte do decote com o ombro (o ponto mais alto dele) até a barra
   ext.listras = limitesListras(Math.max(...decote.map(q => q[1])));
-  for (let i = 0; i < n; i++) {
+  if (!temGola) for (let i = 0; i < n; i++) {
     if (pc[i] === 1) continue;
     const [x, y, z] = pos(i);
     if (y < ext.L * .6) continue;
