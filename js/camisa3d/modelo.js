@@ -289,7 +289,9 @@ function prepararFeminina(geo, ext, perfil) {
   const fr = listrasManga(), compr = [];
   for (const lado of ['mangaE', 'mangaD']) {
     const ids = []; for (let i = 0; i < n; i++) if (tipoDe(i) === lado) ids.push(i);
-    const borda = ids.filter(i => naBorda[grupo[i]]);
+    // borda do punho: a borda aberta da peça longe do corpo (a raglan também tem borda aberta na gola)
+    const sxl = lado === 'mangaE' ? 1 : -1, todas = ids.filter(i => naBorda[grupo[i]]);
+    const xMax = Math.max(...todas.map(i => sxl * p.getX(i))), borda = todas.filter(i => sxl * p.getX(i) > xMax * .6);
     const media = l => l.reduce((s, i) => [s[0] + p.getX(i) / l.length, s[1] + p.getY(i) / l.length, s[2] + p.getZ(i) / l.length], [0, 0, 0]);
     const A = media(borda);
     let u = [0, 0, 0], proj = null, ini = 0, comp = 0;
@@ -305,12 +307,20 @@ function prepararFeminina(geo, ext, perfil) {
       const sx = Math.sign(A[0]);
       let xCava = 0; for (let i = 0; i < n; i++) if (pc[i] >= 2 && tipoDe(i) !== lado) xCava = Math.max(xCava, sx * p.getX(i));
       for (const i of ids) if (sx * p.getX(i) < xCava) pc[i] = p.getZ(i) > 0 ? 2 : 3;
-      ext.cava = xCava;   // o forno traça a costura por posição (linha limpa, sem degraus dos triângulos)
       eixo(media(ids.filter(i => pc[i] === 1)));
+      // a costura em volta da manga: plano perpendicular ao eixo, passando pela ponta do ombro (o alto da
+      // manga na largura do tronco). Assim as faixas dão a volta inteira na manga, também por baixo
+      let ponta = null;
+      for (const i of ids) if (Math.abs(sx * p.getX(i) - xCava) < .01 && (ponta === null || p.getY(i) > p.getY(ponta))) ponta = i;
+      comp = proj(pos(ponta)) - ini;
+      for (const i of ids) pc[i] = proj(pos(i)) - ini < comp ? 1 : p.getZ(i) > 0 ? 2 : 3;
+      // o forno traça essa costura por posição (linha limpa, sem degraus dos triângulos)
+      (ext.costuras ||= {})[lado] = [...u, u[0] * A[0] + u[1] * A[1] + u[2] * A[2] + ini + comp];
+    } else {
+      // como na baby look: a fração vai da boca ao ponto da manga mais longe dela (alto da cava)
+      let fim = -1e9; for (const i of ids) if (pc[i] === 1) fim = Math.max(fim, proj(pos(i)));
+      comp = fim - ini;
     }
-    // como na baby look: a fração vai da boca ao ponto da manga mais longe dela (alto da cava)
-    let fim = -1e9; for (const i of ids) if (pc[i] === 1) fim = Math.max(fim, proj(pos(i)));
-    comp = fim - ini;
     compr.push(comp);
     const naManga = perfil.mangaReal ? ids : ids.filter(i => pc[i] === 1);
     for (const i of naManga) dm[i] = Math.min(1, Math.max(0, (proj(pos(i)) - ini) / comp));
@@ -319,7 +329,7 @@ function prepararFeminina(geo, ext, perfil) {
       let fora = null; for (const i of naManga) if (dm[i] > .4 && dm[i] < .7 && (fora === null || p.getX(i) > p.getX(fora))) fora = i;
       const F0 = pos(fora), nn = [1, 0, 0];
       let ea = [nn[1] * u[2] - nn[2] * u[1], nn[2] * u[0] - nn[0] * u[2], nn[0] * u[1] - nn[1] * u[0]];
-      const la = Math.hypot(...ea); ea = ea.map(c => c / la);
+      const la = Math.hypot(...ea) * (ea[2] > 0 ? -1 : 1); ea = ea.map(c => c / la);   // vista de fora (+x), a direita da logo é -z
       const topo = ini + fr.z * comp;
       const rf = [F0[0] - A[0] - u[0] * proj(F0), F0[1] - A[1] - u[1] * proj(F0), F0[2] - A[2] - u[2] * proj(F0)], raio = Math.hypot(...rf);
       for (const i of naManga) {
@@ -365,6 +375,8 @@ function prepararFeminina(geo, ext, perfil) {
     gl[i] = Math.sqrt(d);
   }
   geo.userData.compManga = compr;
+  // com costura traçada no forno, a peça da manga inteira vai como manga (o forno decide pelo plano)
+  if (ext.costuras) for (let i = 0; i < n; i++) if (tipoDe(i) === 'mangaE' || tipoDe(i) === 'mangaD') pc[i] = 1;
   geo.setAttribute('aPeca', new THREE.BufferAttribute(pc, 1));
   geo.setAttribute('aGola', new THREE.BufferAttribute(gl, 1));
   geo.setAttribute('dManga', new THREE.BufferAttribute(dm, 1));
@@ -418,7 +430,8 @@ const FS = `
 uniform sampler2D tFrente, tCostas, tManga, tRelevo, tBrilho;
 uniform int uModo;   // 0 = cor; 1 = relevo (altura dos bordados); 2 = rugosidade (borracha mais lisa)
 uniform vec3 uExt;
-uniform float uGolaFaixa, uCava;   // uCava > 0: costura da manga vertical em |x| = uCava   // espessura da faixa preta da gola (em aGola)
+uniform float uGolaFaixa, uCava;   // uCava > 0: costura da manga traçada pelos planos uCostE/uCostD
+uniform vec4 uCostE, uCostD;      // normal (do punho para o corpo) e posição da costura   // espessura da faixa preta da gola (em aGola)
 uniform vec2 uMangaWH;
 uniform float uLim[10];   // limites entre as 11 listras do tronco, da barra para cima
 uniform vec3 uManga;   // fim do punho, da branca e da vermelha (fração da manga, a partir do punho)
@@ -432,7 +445,7 @@ void main() {
   for (int i = 0; i < 10; i++) { float t = smoothstep(uLim[i] - w, uLim[i] + w, vY); verm += mod(float(i), 2.) < .5 ? -t : t; }
   vec3 c = mix(cBranco, cVermelho, verm);
   bool manga = vPeca > .5 && vPeca < 1.5, frente = vPeca > 1.5 && vPeca < 2.5;
-  if (uCava > 0. && vPeca > .5 && vPeca < 2.99) { bool raglan = vPeca < 1.99; manga = abs(vP.x) > uCava; frente = !manga && (raglan ? vP.z > 0. : frente); }
+  if (uCava > 0. && manga) { vec4 cs = vP.x > 0. ? uCostE : uCostD; manga = dot(vP, cs.xyz) < cs.w; frente = !manga && vP.z > 0.; }
   float wg = max(fwidth(vGola), 1e-5), gola = vPeca < .5 ? 1. : 1. - smoothstep(uGolaFaixa - wg, uGolaFaixa + wg, vGola);
   if (manga) {   // manga, do punho ao ombro: preto, branca, vermelha, branca (paralelas ao punho)
     float wm = max(fwidth(vDm), 1e-4);
@@ -482,7 +495,7 @@ export function criarForno(renderer, geo, ext, telas, tamanho = 2048) {
       tFrente: { value: tex.frente }, tCostas: { value: tex.costas }, tManga: { value: tex.manga }, tRelevo: { value: tex.relevo }, tBrilho: { value: tex.brilho }, uModo: { value: 0 },
       uExt: { value: new THREE.Vector3(ext.X, ext.L, ext.Z) }, uLim: { value: ext.listras },
       uManga: { value: listrasManga() }, uDesloc: { value: new THREE.Vector2() },
-      uGolaFaixa: { value: ext.golaFaixa }, uCava: { value: ext.cava || 0 }, uMangaWH: { value: new THREE.Vector2(ext.manga.W, ext.manga.H) },
+      uGolaFaixa: { value: ext.golaFaixa }, uCava: { value: ext.costuras ? 1 : 0 }, uCostE: { value: new THREE.Vector4(...(ext.costuras?.mangaE || [0, 0, 0, 0])) }, uCostD: { value: new THREE.Vector4(...(ext.costuras?.mangaD || [0, 0, 0, 0])) }, uMangaWH: { value: new THREE.Vector2(ext.manga.W, ext.manga.H) },
       cBranco: { value: hex(COR.branco) }, cVermelho: { value: hex(COR.vermelho) }, cPreto: { value: hex(COR.preto) }
     }
   });
