@@ -205,7 +205,7 @@ function renderSizes() {
 function refreshModel() {
   const g = gKey(), s = sizeRow();
   Shirt.setModel(g, s.a, s.c);
-  $('#badge').innerHTML = `${g === 'F' ? 'Feminina' : 'Masculina'} · <b>${s.t}</b>`;
+  $('#badge').innerHTML = `${g === 'F' ? 'Feminina' : 'Masculina'} · <b>${s.t.replace(' BL', '')}</b>`;   // o selo do 3D mostra só o tamanho
   const m = $('#measures'); m.classList.toggle('has-kg', !!s.kg);
   m.innerHTML = `<div><span>Peitoral</span><strong>${s.a}<small> cm</small></strong></div><div><span>Barra</span><strong>${s.b}<small> cm</small></strong></div><div><span>Compr.</span><strong>${s.c}<small> cm</small></strong></div>${s.kg ? `<div><span>Peso sugerido</span><strong style="font-size:17px">${s.kg}</strong></div>` : ''}`;
   $('#measuresNote').textContent = state.idx < 0 ? 'Prévia no tamanho M. Escolha o seu acima.' : '';

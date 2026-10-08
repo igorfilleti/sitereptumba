@@ -71,10 +71,19 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
 
   let sujo = true;                                              // pede um novo quadro
   // completo = false: só nome/número mudaram (a parte fixa da estampa e os mapas são reaproveitados)
+  // cada modelagem guarda a arte já assada: "cheio" = a parte fixa está pronta; "versao" = a arte (nome,
+  // número, imagens, fontes) que ela mostra. Trocar de modelagem só reassa se algo mudou desde então
+  let versaoArte = 0;
+  function assarModelo(x, completo, frente) {
+    completo ||= !x.cheio;
+    const refeito = x.estampa.desenhar(x.modelo.ext, img, texto, completo);
+    x.forno.assar(refeito, frente || refeito);
+    x.cheio = true; x.versao = versaoArte;
+  }
   function redesenhar(completo = true) {
     if (!forno) return;
     // ao digitar só o nome, a frente não muda: não reenvia a arte dela para a placa de vídeo
-    forno.assar(estampa.desenhar(modelo.ext, img, texto, completo), frenteMudou);
+    assarModelo(modelos[gAtual], completo, frenteMudou);
     frenteMudou = false;
     sujo = true;
   }
@@ -86,10 +95,10 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
 
   for (const [k, arq] of Object.entries(IMAGENS)) {
     const im = new Image();
-    im.onload = () => { img[k] = im; pedirDesenho(); };
+    im.onload = () => { img[k] = im; for (const x of Object.values(modelos)) x.cheio = false; pedirDesenho(); };
     im.src = new URL(`../../assets/img/${arq}`, import.meta.url).href;
   }
-  if (document.fonts) for (const f of [`800 80px "Saira Extra Condensed"`, `700 80px "Rajdhani"`, `800 80px "Saira Condensed"`]) document.fonts.load(f).then(() => pedirDesenho(false), () => {});
+  if (document.fonts) for (const f of [`800 80px "Saira Extra Condensed"`, `700 80px "Rajdhani"`, `800 80px "Saira Condensed"`]) document.fonts.load(f).then(() => { versaoArte++; pedirDesenho(false); }, () => {});
 
   // carrega cada modelagem só quando ela é escolhida pela primeira vez
   function carregar(g) {
@@ -105,9 +114,20 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
     malha.customDepthMaterial = m.profundidade;       // a sombra acompanha o balanço do pano
     malha.position.y = -m.ext.L / 2;
     const pivo = new THREE.Group(); pivo.add(malha); pivo.visible = false; grupo.add(pivo);
-    modelos[g] = { modelo: m, forno: fr, estampa: est, camisa: pivo };
-    if (g === gAtual) mostrar(g);
+    const x = modelos[g] = { modelo: m, forno: fr, estampa: est, camisa: pivo, cheio: false, versao: -1 };
+    if (g === gAtual) { mostrar(g); preCarregarOutra(g); }
+    else {
+      // carregada em segundo plano: já assa a arte e compila os shaders, para a troca ser imediata
+      assarModelo(x, true, true);
+      pivo.visible = true;
+      return renderer.compileAsync(pivo, camera, scene).catch(() => {}).then(() => { pivo.visible = modelos[gAtual] === x; });
+    }
     });
+  }
+  // depois que a primeira camisa aparece, a outra modelagem é preparada sem pressa
+  function preCarregarOutra(g) {
+    const outra = g === 'M' ? 'F' : 'M', ir = () => carregar(outra).catch(() => {});
+    if (window.requestIdleCallback) requestIdleCallback(ir, { timeout: 2500 }); else setTimeout(ir, 1200);
   }
   function mostrar(g) {
     const x = modelos[g]; if (!x) return;
@@ -116,7 +136,8 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
     camisa.visible = true;
     if (medidas) escalaAlvo.copy(escalaDe(g, ...medidas));
     escala.copy(escalaAlvo).multiplyScalar(.95);                 // pequeno "respiro" ao trocar a modelagem
-    redesenhar();
+    if (!x.cheio || x.versao !== versaoArte) { frenteMudou = true; redesenhar(false); }   // só se algo mudou desde a última vez
+    sujo = true;
     ajustarCamera();
   }
   const escalaDe = (g, a, c) => { const R = referencia(g); return new THREE.Vector3(a / R[0], c / R[1], a / R[0]); };
@@ -132,7 +153,7 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
     }
     sujo = true;
   }
-  function setText(nome, numero) { frenteMudou ||= numero !== texto.numero; texto = { nome, numero }; pedirDesenho(false); }
+  function setText(nome, numero) { versaoArte++; frenteMudou ||= numero !== texto.numero; texto = { nome, numero }; pedirDesenho(false); }
   /* ---------- controles ---------- */
   const controls = new OrbitControls(camera, canvas);
   canvas.style.touchAction = 'pan-y';                          // deixa rolar a página no celular
