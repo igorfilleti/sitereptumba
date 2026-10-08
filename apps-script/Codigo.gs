@@ -10,13 +10,13 @@ const ABA = 'Pedidos';
 const PASTA_COMPROVANTES = 'Comprovantes';
 const MAX_BYTES = 5 * 1024 * 1024;   // o site já limita a 5 MB
 const TIPOS_OK = /^(image\/|application\/pdf$)/;
-const CABECALHO = ['Pedido', 'Data', 'Nome', 'Apelido', 'WhatsApp', 'Nome na camisa', 'Número', 'Modelagem', 'Tamanho', 'Comprovante', 'Status', 'Pagamento'];
+const CABECALHO = ['Pedido', 'Data', 'Nome', 'Apelido', 'WhatsApp', 'Nome na camisa', 'Número', 'Modelagem', 'Tamanho', 'Comprovante', 'Status', 'Pagamento', 'E-mail'];
 
 function doPost(e) {
   const lock = LockService.getScriptLock();
   try {
     const p = JSON.parse(e.postData.contents);
-    const faltando = ['nome', 'apelido', 'celular', 'camisaNome', 'camisaNumero', 'genero', 'tamanho'].filter(k => !String(p[k] || '').trim());
+    const faltando = ['nome', 'apelido', 'celular', 'email', 'camisaNome', 'camisaNumero', 'genero', 'tamanho'].filter(k => !String(p[k] || '').trim());
     if (faltando.length) return resposta({ ok: false, erro: 'Pedido incompleto (' + faltando.join(', ') + ').' });
     const a = p.arquivo || {};
     if (!a.base64 || !TIPOS_OK.test(a.tipo || '')) return resposta({ ok: false, erro: 'Comprovante ausente ou em formato inválido.' });
@@ -33,7 +33,7 @@ function doPost(e) {
     aba.appendRow([
       "'" + numero, data, limpo(p.nome), limpo(p.apelido), limpo(p.celular),
       limpo(p.camisaNome), limpo(p.camisaNumero), limpo(p.genero), limpo(p.tamanho),
-      arquivo.getUrl(), 'A conferir', limpo(p.pagamento)
+      arquivo.getUrl(), 'A conferir', limpo(p.pagamento), limpo(p.email)
     ]);
     SpreadsheetApp.flush();
     return resposta({ ok: true, pedido: numero });

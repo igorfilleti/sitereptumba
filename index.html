@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Goldman&family=Rajdhani:wght@700&family=Saira+Condensed:wght@600;700&family=Saira+Extra+Condensed:wght@900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20261008d">
+<link rel="stylesheet" href="css/style.css?v=20261008e">
 <script type="importmap">
 { "imports": {
   "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.min.js",
@@ -69,6 +69,11 @@
       <div class="field">
         <label for="celular">Celular (WhatsApp)</label>
         <input id="celular" name="celular" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="(19) 99999-9999" maxlength="15" required>
+        <small class="msg" aria-live="polite"></small>
+      </div>
+      <div class="field">
+        <label for="email">E-mail</label>
+        <input id="email" name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="voce@email.com" maxlength="120" required>
         <small class="msg" aria-live="polite"></small>
       </div>
       <div class="actions"><button type="button" class="btn" data-next="dados">Continuar <span class="arrow">→</span></button></div>
@@ -236,7 +241,7 @@
   </div>
 </dialog>
 
-<script src="js/vendor/qrcode.js?v=20261008d" defer></script>
-<script type="module" src="js/app.js?v=20261008d"></script>
+<script src="js/vendor/qrcode.js?v=20261008e" defer></script>
+<script type="module" src="js/app.js?v=20261008e"></script>
 </body>
 </html>
