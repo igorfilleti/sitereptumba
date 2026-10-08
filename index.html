@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Goldman&family=Rajdhani:wght@700&family=Saira+Condensed:wght@600;700&family=Saira+Extra+Condensed:wght@900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20261008h">
+<link rel="stylesheet" href="css/style.css?v=20261008i">
 <script type="importmap">
 { "imports": {
   "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.min.js",
@@ -106,15 +106,6 @@
       </div>
 
       <div class="card controls">
-        <fieldset class="field" id="fsGenero">
-          <legend>Modelagem</legend>
-          <div class="seg">
-            <input type="radio" name="genero" id="gM" value="Masculino" checked><label for="gM">Masculina</label>
-            <input type="radio" name="genero" id="gF" value="Feminino"><label for="gF">Feminina</label>
-          </div>
-          <small class="msg" aria-live="polite"></small>
-        </fieldset>
-
         <div class="row2">
           <div class="field">
             <label for="camisaNome">Nome na camisa <span class="count" id="cNome">0/12</span></label>
@@ -127,6 +118,15 @@
             <small class="msg" aria-live="polite"></small>
           </div>
         </div>
+
+        <fieldset class="field" id="fsGenero">
+          <legend>Modelagem</legend>
+          <div class="seg">
+            <input type="radio" name="genero" id="gM" value="Masculino" checked><label for="gM">Masculina</label>
+            <input type="radio" name="genero" id="gF" value="Feminino"><label for="gF">Feminina</label>
+          </div>
+          <small class="msg" aria-live="polite"></small>
+        </fieldset>
 
         <fieldset class="field" id="fsTamanho">
           <legend>Tamanho</legend>
@@ -240,7 +240,7 @@
   </div>
 </dialog>
 
-<script src="js/vendor/qrcode.js?v=20261008h" defer></script>
-<script type="module" src="js/app.js?v=20261008h"></script>
+<script src="js/vendor/qrcode.js?v=20261008i" defer></script>
+<script type="module" src="js/app.js?v=20261008i"></script>
 </body>
 </html>

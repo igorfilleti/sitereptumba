@@ -200,7 +200,7 @@ details.table tr.sel td{background:rgba(255,42,54,.14);color:#fff}
   .viewer-col{top:60px;z-index:5}   /* sem fundo próprio: o cartão da camisa já cobre o que rola por baixo, e a estampa do fundo continua nas laterais */
   .viewer{aspect-ratio:auto;height:min(46svh,440px)}
   /* modo edição (digitando nome/número): camisa presa no topo da parte visível, acima do teclado */
-  body.editando .viewer-col{position:fixed;top:var(--ed-topo,0px);left:0;right:0;z-index:30;padding:8px 10px;
+  body.editando .viewer-col{position:fixed;top:0;left:0;right:0;z-index:30;padding:8px 10px;transform:translate3d(0,var(--ed-topo,0px),0);will-change:transform;
     background:linear-gradient(180deg,rgba(8,8,10,.94) 70%,rgba(8,8,10,0))}
   body.editando .viewer{height:var(--ed-alt,40vh)}
   body.editando .viewer .hint,body.editando .viewer-ui .zoom{display:none}

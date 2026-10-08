@@ -60,7 +60,7 @@ const Shirt = (() => {
     console.error('Camisa 3D:', err);
     msg.textContent = 'Não foi possível abrir a visualização 3D, mas você pode continuar o pedido normalmente.';
   };
-  import('./camisa3d/viewer.js?v=20261008h')
+  import('./camisa3d/viewer.js?v=20261008i')
     .then(m => {
       real = m.createShirt($('#shirt3d'), { onPronto: () => { msg.hidden = true; }, onErro: falhou });
       for (const [k, a] of Object.entries(fila)) real[k](...a);
@@ -206,35 +206,39 @@ function syncShirtText() {
   el[id].addEventListener('focus', () => Shirt.showSide('back'));
 });
 
-/* celular: ao digitar nome/número, a camisa fica presa no topo da parte visível da tela (acima do teclado)
-   e o campo logo abaixo dela, para a pessoa ver cada letra entrar na camisa na hora */
+/* celular: ao digitar nome/número, a camisa fica presa no topo da tela e o campo logo abaixo dela,
+   para a pessoa ver cada letra entrar na camisa na hora. Tudo é calculado uma vez, ao tocar no campo:
+   tamanho fixo da camisa e um único rolamento que deixa o campo acima de onde o teclado chega (assim o
+   celular não precisa rolar a página e nada fica brigando). Se o iPhone deslocar a tela mesmo assim,
+   a camisa só acompanha esse deslocamento (sem rolar nada), num quadro de animação */
 (function modoEdicao() {
   const col = $('.viewer-col'), vv = window.visualViewport, raiz = document.documentElement;
   const ids = ['camisaNome', 'camisaNumero'];
   const celular = () => matchMedia('(max-width:860px)').matches;
   const espaco = document.createElement('div');                // segura o lugar da camisa na página
-  let ativo = null;
-  function posicionar() {
-    if (!ativo) return;
-    const topo = vv ? vv.offsetTop : 0, alt = vv ? vv.height : innerHeight;
-    const camisaAlt = Math.round(Math.max(170, Math.min(alt * .46, 340)));
-    raiz.style.setProperty('--ed-topo', topo + 'px');
-    raiz.style.setProperty('--ed-alt', camisaAlt + 'px');
-    // o campo logo abaixo da camisa (e acima do teclado)
-    const d = ativo.getBoundingClientRect().top - (topo + camisaAlt + 26);
-    if (Math.abs(d) > 4) window.scrollBy(0, d);
-  }
+  let ativo = false, quadro = 0;
+  const acompanhar = () => {
+    if (!ativo || quadro) return;
+    quadro = requestAnimationFrame(() => { quadro = 0; raiz.style.setProperty('--ed-topo', (vv ? vv.offsetTop : 0) + 'px'); });
+  };
   function entrar(e) {
     if (!celular()) return;
-    if (!ativo) { espaco.style.height = col.offsetHeight + 'px'; col.before(espaco); }
-    ativo = e.target;
-    document.body.classList.add('editando');
-    posicionar();
-    setTimeout(posicionar, 300); setTimeout(posicionar, 700);  // depois que o teclado termina de abrir
+    if (!ativo) {
+      // tamanho da camisa: cerca de 1/3 da tela, decidido antes de o teclado abrir
+      const camisaAlt = Math.round(Math.max(170, Math.min(innerHeight * .34, 300)));
+      raiz.style.setProperty('--ed-alt', camisaAlt + 'px');
+      raiz.style.setProperty('--ed-topo', '0px');
+      espaco.style.height = col.offsetHeight + 'px'; col.before(espaco);
+      document.body.classList.add('editando');
+      ativo = true;
+      // um único rolamento: o campo logo abaixo da camisa
+      const d = e.target.getBoundingClientRect().top - (camisaAlt + 34);
+      if (Math.abs(d) > 2) window.scrollTo({ top: scrollY + d, behavior: 'instant' });
+    }
   }
   function sair() {
     if (!ativo) return;
-    ativo = null;
+    ativo = false;
     document.body.classList.remove('editando');
     espaco.remove();
   }
@@ -243,7 +247,7 @@ function syncShirtText() {
     // trocar de um campo para o outro não sai do modo edição
     el[id].addEventListener('blur', () => setTimeout(() => { if (!ids.includes((document.activeElement || {}).id)) sair(); }, 60));
   });
-  if (vv) { vv.addEventListener('resize', posicionar); vv.addEventListener('scroll', posicionar); }
+  if (vv) { vv.addEventListener('resize', acompanhar); vv.addEventListener('scroll', acompanhar); }
 })();
 
 /* modelagem e tamanho (radios: só uma opção por vez) */
