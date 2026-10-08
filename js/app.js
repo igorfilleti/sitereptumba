@@ -169,7 +169,8 @@ el.celular.addEventListener('input', () => {
 
 /* nome e número da camisa — atualizam o 3D em tempo real */
 function syncShirtText() {
-  const n = el.camisaNome.value.toUpperCase().replace(/[^\p{L} .'\-]/gu, '').replace(/\s{2,}/g, ' ').slice(0, 12);
+  // nome aceita os mesmos caracteres do número, mais o espaço
+  const n = el.camisaNome.value.toUpperCase().replace(/[^\p{L}\p{N} !?&#*+\-.\/']/gu, '').replace(/\s{2,}/g, ' ').slice(0, 12);
   if (n !== el.camisaNome.value) el.camisaNome.value = n;
   const num = el.camisaNumero.value.toUpperCase().replace(NUMERO_FORA, '').slice(0, 4);
   if (num !== el.camisaNumero.value) el.camisaNumero.value = num;
