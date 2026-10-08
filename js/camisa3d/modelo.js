@@ -314,6 +314,7 @@ function prepararFeminina(geo, ext, perfil) {
       for (const i of ids) if (Math.abs(sx * p.getX(i) - xCava) < .01 && (ponta === null || p.getY(i) > p.getY(ponta))) ponta = i;
       comp = proj(pos(ponta)) - ini;
       // manga: dentro da volta do braço e para fora da linha vertical do ombro (a listra da gola vai até ela)
+      // (a linha vertical só vale na altura da listra da gola; ela é conferida de novo no forno)
       for (const i of ids) pc[i] = proj(pos(i)) - ini < comp && sx * p.getX(i) >= xCava ? 1 : p.getZ(i) > 0 ? 2 : 3;
       // o forno traça essa costura por posição (linha limpa, sem degraus dos triângulos)
       (ext.costuras ||= {})[lado] = [...u, u[0] * A[0] + u[1] * A[1] + u[2] * A[2] + ini + comp];
@@ -448,7 +449,7 @@ void main() {
   for (int i = 0; i < 10; i++) { float t = smoothstep(uLim[i] - w, uLim[i] + w, vY); verm += mod(float(i), 2.) < .5 ? -t : t; }
   vec3 c = mix(cBranco, cVermelho, verm);
   bool manga = vPeca > .5 && vPeca < 1.5, frente = vPeca > 1.5 && vPeca < 2.5;
-  if (uCava > 0. && manga) { vec4 cs = vP.x > 0. ? uCostE : uCostD; manga = dot(vP, cs.xyz) < cs.w && abs(vP.x) >= (vP.x > 0. ? uCavaX.x : uCavaX.y); frente = !manga && vP.z > 0.; }
+  if (uCava > 0. && manga) { vec4 cs = vP.x > 0. ? uCostE : uCostD; manga = dot(vP, cs.xyz) < cs.w && (vY < uLim[9] || abs(vP.x) >= (vP.x > 0. ? uCavaX.x : uCavaX.y)); frente = !manga && vP.z > 0.; }
   float wg = max(fwidth(vGola), 1e-5), gola = vPeca < .5 ? 1. : 1. - smoothstep(uGolaFaixa - wg, uGolaFaixa + wg, vGola);
   if (manga) {   // manga, do punho ao ombro: preto, branca, vermelha, branca (paralelas ao punho)
     float wm = max(fwidth(vDm), 1e-4);
