@@ -30,7 +30,9 @@ function trama() {
   return t;
 }
 
-// camisa.gltf: só a camisa, compactada (normais em 8 bits, molde e índices em 16 bits: KHR_mesh_quantization)
+// camisa.gltf: só a camisa, compactada (normais em 8 bits, molde e índices em 16 bits: KHR_mesh_quantization).
+// As normais foram suavizadas (60 passadas, fora do site): a luz vê um tecido liso, sem as dobras do
+// modelo original, e o formato do tronco fica intacto (nenhum ponto da malha mudou de lugar).
 const URL_MODELO = new URL('../../assets/models/camisa/camisa.gltf', import.meta.url).href;
 const GIRO = -170 * Math.PI / 180;      // o arquivo vem girado; assim a frente fica para +z
 export const ALTURA = .74;              // comprimento do tamanho M de referência (m)
@@ -318,3 +320,4 @@ export function criarForno(renderer, geo, ext, telas, tamanho = 2048) {
   }
   return { textura: alvo.texture, relevo: relevo.texture, rugosidade: rugosidade.texture, assar };
 }
+
