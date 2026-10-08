@@ -1,11 +1,8 @@
 /* =====================================================================
-   MODELO 3D — "FC Porto Shirt" de Carlos.Maciel (CC BY 4.0), sem a arte
-   original (textura e relevo do Porto removidos). Carrega o glTF, deixa a camisa de frente e em metros, e
-   "assa" o design da Rep. Tumba na textura dela.
-
-   Peças do molde (UV) desse modelo:
-     gola  v < .056 · mangas .056 ≤ v < .28 (esquerda de quem veste: u .38–.76)
-     frente u < .5 · costas u ≥ .5 (v ≥ .28)
+   MODELOS 3D — masculina: "Men Regular Apparel Fit Sporty T-Shirt" de BINARYCLOTH
+   (CC BY 4.0, manga raglan); feminina (baby look): "T-Shirt for Female" de DaaGHrii
+   (CC BY 4.0). Carrega o glTF, deixa a camisa de frente e em metros, e "assa" o
+   design da Rep. Tumba na textura dela.
    ===================================================================== */
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -30,116 +27,9 @@ function trama() {
   return t;
 }
 
-// camisa.glb: só a camisa, simplificada para ~15 mil triângulos (gltf-transform/meshoptimizer) e compactada.
-// As normais foram suavizadas (60 passadas, fora do site): a luz vê um tecido liso, sem as dobras do
-// modelo original, e o formato do tronco fica intacto (nenhum ponto da malha mudou de lugar).
-const URL_MODELO = new URL('../../assets/models/camisa/camisa.glb', import.meta.url).href;
-const GIRO = -170 * Math.PI / 180;      // o arquivo vem girado; assim a frente fica para +z
-export const ALTURA = .74;              // comprimento do tamanho M de referência (m)
+const ALTURA = .74;   // comprimento do tamanho M masculino de referência (m)
 
-export const peca = (u, v) => (v < .056 ? 'gola' : v < .28 ? 'manga' : u < .5 ? 'frente' : 'costas');
-
-/* O modelo original tem gola redonda; a arte pede gola em U suave.
-   Puxa a gola e o alto da frente para baixo até formar o U (o peito comprime
-   suavemente) e estica a própria peça da gola até a espessura da camisa real,
-   convertida para a escala do modelo. O U termina onde acaba o vermelho dos ombros. */
-const GOLA_PECA_VISIVEL = .0091;   // espessura de frente por unidade de esticamento da peça da gola (medida na tela)
-export const GOLA_V = {
-  meia: .088, base: .5, curva: 1.7                 // curva > 1 arredonda o fundo (1 = V reto)
-};
-const perfilGola = t => Math.pow(t, GOLA_V.curva);   // 0 no centro, 1 na lateral do decote
-// fundoDe(bordaY): recebe a altura do recorte da gola com o ombro e devolve onde o U termina
-function golaV(geo, escalaReal, fundoDe) {
-  const p = geo.attributes.position, uv = geo.attributes.uv, { meia, base } = GOLA_V;
-  const estica = DESIGN.gola.espessura * escalaReal / GOLA_PECA_VISIVEL;
-  const suave = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
-
-  // decote original da frente: altura máxima da frente por faixa de 1 cm em x
-  const passo = .01, n = Math.round(meia / passo) + 2, decote = new Array(2 * n + 1).fill(0);
-  for (let i = 0; i < p.count; i++) {
-    const x = p.getX(i);
-    if (peca(uv.getX(i), uv.getY(i)) === 'frente' && Math.abs(x) <= (n - .5) * passo) { const b = Math.round(x / passo) + n; decote[b] = Math.max(decote[b], p.getY(i)); }
-  }
-  const N = x => { const f = x / passo + n, i = Math.max(0, Math.min(2 * n - 1, Math.floor(f))), t = f - i; return decote[i] * (1 - t) + decote[i + 1] * t; };
-  const bordaY = (N(-meia) + N(meia)) / 2, fundo = fundoDe(bordaY);
-  const alvo = x => fundo + (bordaY - fundo) * perfilGola(Math.min(1, Math.abs(x) / meia));   // nova linha do U
-  // um único campo de deslocamento para o peito e a gola: pontos da costura andam juntos
-  const D = (x, y) => (Math.abs(x) >= meia || y <= base ? 0 : Math.min(0, alvo(x) - N(x)) * Math.min(1, (y - base) / (N(x) - base)));
-
-  // a gola é uma tira dobrada: as duas bordas (v mínimo e máximo) ficam na costura e o
-  // meio da tira é a borda de cima. Para cada posição ao longo da tira (u), guarda a
-  // costura original; a gola acompanha a costura e só estica para cima a partir dela.
-  let vMin = 1, vMax = 0, uMin = 1, uMax = 0;
-  const gola = [];
-  for (let i = 0; i < p.count; i++) if (peca(uv.getX(i), uv.getY(i)) === 'gola') {
-    gola.push(i); vMin = Math.min(vMin, uv.getY(i)); vMax = Math.max(vMax, uv.getY(i)); uMin = Math.min(uMin, uv.getX(i)); uMax = Math.max(uMax, uv.getX(i));
-  }
-  const vMeio = (vMin + vMax) / 2, nu = 240, cost = Array.from({ length: nu }, () => [0, 0, 0]);
-  const binU = u => Math.max(0, Math.min(nu - 1, Math.floor((u - uMin) / (uMax - uMin) * nu)));
-  for (const i of gola) if (Math.abs(uv.getY(i) - vMeio) / (vMax - vMeio) > .92) { const c = cost[binU(uv.getX(i))]; c[0] += p.getX(i); c[1] += p.getY(i); c[2]++; }
-  for (let b = 0; b < nu; b++) if (!cost[b][2]) {                        // faixas sem pontos: usa a vizinha mais próxima
-    for (let k = 1; k < nu; k++) { const o = cost[b - k]?.[2] ? cost[b - k] : cost[b + k]?.[2] ? cost[b + k] : null; if (o) { cost[b] = [o[0] / o[2], o[1] / o[2], 1]; break; } }
-  }
-  const costura = cost.map(c => [c[0] / c[2], c[1] / c[2]]);
-
-  const novoY = new Float32Array(p.count);
-  for (let i = 0; i < p.count; i++) {
-    const x = p.getX(i), y = p.getY(i), k = peca(uv.getX(i), uv.getY(i));
-    novoY[i] = y;
-    if (k === 'frente') novoY[i] = y + D(x, y);
-    else if (k === 'gola') {
-      const [xc, yc] = costura[binU(uv.getX(i))];
-      const frente = suave(-.03, -.005, p.getZ(i));                     // 0 na gola de trás, 1 na da frente
-      const s = (estica - 1) * (1 - suave(.6, 1, Math.abs(xc) / meia)); // estica no U, some nas laterais
-      novoY[i] = y + frente * (D(x, yc) + (y - yc) * s);              // x próprio: casa exato com o peito
-    }
-  }
-  for (let i = 0; i < p.count; i++) p.setY(i, novoY[i]);
-  p.needsUpdate = true;
-  geo.computeBoundingBox();
-}
-/* Nas mangas as listras seguem a manga (paralelas ao punho), não o tronco.
-   As linhas de v constante do molde são paralelas à boca da manga, mas v não
-   As listras são impressas no molde (UV), que é o molde de costura: cada vértice ganha a fração
-   da manga em v, da dobra da barra (0) ao topo (1): atributo "dManga". O comprimento pelo eixo
-   (compManga) é a base da escala real ÷ modelo.
-   Para a manga esquerda guarda também onde fica o lado de fora no molde (u) e em que v
-   cada fração da manga cai ali, para posicionar a logo da Unicamp no próprio molde. */
-const MOLDE_M_POR_UV = 1.17;   // o molde (UV) do modelo é o molde de costura: ~1,17 m por unidade, igual em u e v (medido)
-function distanciaManga(geo) {
-  const p = geo.attributes.position, uv = geo.attributes.uv, d = new Float32Array(p.count);
-  const passo = .005;
-  for (const [nomeLado, lado] of [['direita', u => u < .38], ['esquerda', u => u >= .38 && u < .76]]) {
-    const idx = [];
-    for (let i = 0; i < p.count; i++) if (peca(uv.getX(i), uv.getY(i)) === 'manga' && lado(uv.getX(i))) idx.push(i);
-    const vMin = Math.min(...idx.map(i => uv.getY(i))), vMax = Math.max(...idx.map(i => uv.getY(i)));
-    const nb = Math.ceil((vMax - vMin) / passo) + 1, soma = Array.from({ length: nb }, () => [0, 0, 0, 0]);
-    for (const i of idx) { const s = soma[Math.floor((uv.getY(i) - vMin) / passo)]; s[0] += p.getX(i); s[1] += p.getY(i); s[2] += p.getZ(i); s[3]++; }
-    const centro = soma.map(s => (s[3] ? [s[0] / s[3], s[1] / s[3], s[2] / s[3]] : null));
-    const ini = centro.find(Boolean), fim = [...centro].reverse().find(Boolean);
-    const e = [fim[0] - ini[0], fim[1] - ini[1], fim[2] - ini[2]], l = Math.hypot(...e);
-    // distância de cada faixa de v até a boca, ao longo do eixo (sempre crescente)
-    let ult = 0;
-    const dist = centro.map(c => (ult = c ? Math.max(ult, ((c[0] - ini[0]) * e[0] + (c[1] - ini[1]) * e[1] + (c[2] - ini[2]) * e[2]) / l) : ult));
-    // listras impressas no molde, como na fábrica: a fração cresce por igual em v, da dobra da
-    // barra (onde a manga começa a aparecer; abaixo dela é a bainha dobrada para dentro) até o topo
-    const bDobra = dist.findIndex(x => x > .005), vDobra = vMin + Math.max(0, bDobra - .5) * passo;
-    const vDaFracao = fr => vDobra + fr * (vMax - vDobra);
-    for (const i of idx) d[i] = Math.min(1, Math.max(0, (uv.getY(i) - vDobra) / (vMax - vDobra)));
-    (geo.userData.compManga ||= []).push(dist[nb - 1]);
-    if (nomeLado === 'esquerda') {
-      // u do lado de fora (x máximo no meio da manga)
-      let fora = null;
-      for (const i of idx) if (d[i] > .45 && d[i] < .65 && (!fora || p.getX(i) > p.getX(fora))) fora = i;
-      // sentido: visto de fora (+x), a direita da tela é -z; vê se u cresce para lá
-      let suz = 0, suu = 0; const uc = uv.getX(fora), zc = p.getZ(fora);
-      for (const i of idx) { const du = uv.getX(i) - uc; if (Math.abs(du) < .03 && Math.abs(d[i] - d[fora]) < .05) { suz += du * (p.getZ(i) - zc); suu += du * du; } }
-      geo.userData.mangaEsq = { uc, vDaFracao, comprimentoMolde: (vMax - vDobra) * MOLDE_M_POR_UV, sentidoU: suz / (suu || 1) < 0 ? 1 : -1 };
-    }
-  }
-  geo.setAttribute('dManga', new THREE.BufferAttribute(d, 1));
-}
-/* ---------- os dois modelos: masculino (FC Porto Shirt) e baby look (T-Shirt for Female) ----------
+/* ---------- os dois modelos: masculina e baby look ----------
    Os dois ganham os mesmos atributos por ponto, usados pelo forno e pela física:
      aPeca    0 gola · 1 manga · 2 frente · 3 costas
      aGola    distância até o decote (m); a faixa preta vai onde ela é menor que ext.golaFaixa
@@ -147,22 +37,19 @@ function distanciaManga(geo) {
      aMangaUV posição (m) na manga esquerda: em volta dela e ao longo dela, a partir da divisa
               vermelha/branca de cima (onde vai a Unicamp); 99 fora dela */
 const PERFIS = {
-  M: { url: URL_MODELO, altura: ALTURA, ref: [52, ALTURA * 100] },
+  // masculina M de referência: 52 × 74 cm; manga raglan no 3D, pintada como a manga da camisa real
+  M: { url: new URL('../../assets/models/masculina/camisa.glb', import.meta.url).href, altura: ALTURA, ref: [52, ALTURA * 100], giro: 0, mangaReal: true },
   // baby look M de referência: 44 × 60 cm
-  F: { url: new URL('../../assets/models/feminina/scene.gltf', import.meta.url).href, altura: .60, ref: [44, 60], giro: Math.PI / 2 },
-  // teste (?masc=2): "Men Regular Apparel Fit Sporty T-Shirt" de BINARYCLOTH (CC BY 4.0), manga raglan
-  M2: { url: new URL('../../assets/models/masculina2/camisa.glb', import.meta.url).href, altura: ALTURA, ref: [52, ALTURA * 100], giro: 0, mangaReal: true }
+  F: { url: new URL('../../assets/models/feminina/scene.gltf', import.meta.url).href, altura: .60, ref: [44, 60], giro: Math.PI / 2 }
 };
-const TESTE_MASC = typeof location !== 'undefined' && new URLSearchParams(location.search).get('masc') === '2';
 export const referencia = g => PERFIS[g].ref;
 
 export async function carregarModelo(g = 'M') {
-  if (g === 'M' && TESTE_MASC) g = 'M2';
   const P = PERFIS[g];
   const gltf = await new GLTFLoader().loadAsync(P.url);
   gltf.scene.updateMatrixWorld(true);
   let malha = null;
-  gltf.scene.traverse(o => { if (o.isMesh && (g !== 'M' || o.material.name === 'Louis_Vuitton_Original')) malha = o; });
+  gltf.scene.traverse(o => { if (o.isMesh) malha = o; });
   if (!malha) throw new Error('Malha da camisa não encontrada no modelo.');
 
   // coordenadas de projeto: x centrado, y = 0 na barra, z centrado, em metros
@@ -174,7 +61,7 @@ export async function carregarModelo(g = 'M') {
     geo.setAttribute(nome, new THREE.BufferAttribute(v, at.itemSize));
   }
   geo.applyMatrix4(malha.matrixWorld);
-  if (g === 'M') geo.rotateY(GIRO); else orientar(geo, P.giro);
+  orientar(geo, P.giro);
   geo.computeBoundingBox();
   const b = geo.boundingBox, k = P.altura / (b.max.y - b.min.y);
   geo.translate(-(b.min.x + b.max.x) / 2, -b.min.y, -(b.min.z + b.max.z) / 2);
@@ -183,7 +70,7 @@ export async function carregarModelo(g = 'M') {
   geo.computeBoundingBox();
   const { max } = geo.boundingBox;
   const ext = { X: Math.max(max.x, -geo.boundingBox.min.x) + .005, Z: Math.max(max.z, -geo.boundingBox.min.z) + .005, L: P.altura };
-  if (g === 'M') prepararMasculina(geo, ext); else prepararFeminina(geo, ext, P);
+  prepararModelo(geo, ext, P);
   // altura usada nas listras do tronco: a própria altura, salvo ajuste do modelo
   if (!geo.attributes.aY) geo.setAttribute('aY', new THREE.BufferAttribute(Float32Array.from({ length: geo.attributes.position.count }, (_, i) => geo.attributes.position.getY(i)), 1));
 
@@ -204,31 +91,7 @@ export async function carregarModelo(g = 'M') {
   return { geo, material, profundidade, ext };
 }
 
-function prepararMasculina(geo, ext) {
-  distanciaManga(geo);
-  // camisa real → modelo: a manga real mede DESIGN.real.manga; a do modelo, o que foi medido acima
-  const compManga = geo.userData.compManga.reduce((s, v) => s + v, 0) / geo.userData.compManga.length;
-  ext.escalaReal = compManga / DESIGN.real.manga;
-  // adesivo da manga esquerda: 20 × 20 cm no molde, centrado no lado de fora, na divisa vermelha/branca de cima
-  const fr = listrasManga(), me = geo.userData.mangaEsq, vTopo = me.vDaFracao(fr.z), vBaixo = me.vDaFracao(fr.y);
-  ext.manga = { W: .2, H: .2, vermAlt: (vTopo - vBaixo) * MOLDE_M_POR_UV };   // a estampa converte medidas reais com isso
-  // listras do tronco: do recorte da gola com o ombro até a barra; o U da gola termina no fim da listra do ombro
-  golaV(geo, ext.escalaReal, ombro => { ext.listras = limitesListras(ombro); return ext.listras[ext.listras.length - 1]; });
-  // a gola é peça própria no molde
-  const uv = geo.attributes.uv, n = uv.count, pc = new Float32Array(n), gl = new Float32Array(n), mu = new Float32Array(n * 2).fill(99);
-  const cod = { gola: 0, manga: 1, frente: 2, costas: 3 };
-  for (let i = 0; i < n; i++) {
-    const u = uv.getX(i), v = uv.getY(i), q = peca(u, v);
-    pc[i] = cod[q]; gl[i] = q === 'gola' ? 0 : 1;
-    if (q === 'manga' && u > .38 && u < .76) { mu[i * 2] = me.sentidoU * (u - me.uc) * MOLDE_M_POR_UV; mu[i * 2 + 1] = (v - vTopo) * MOLDE_M_POR_UV; }
-  }
-  ext.golaFaixa = .5;
-  geo.setAttribute('aPeca', new THREE.BufferAttribute(pc, 1));
-  geo.setAttribute('aGola', new THREE.BufferAttribute(gl, 1));
-  geo.setAttribute('aMangaUV', new THREE.BufferAttribute(mu, 2));
-}
-
-/* baby look: o arquivo vem com as mangas no eixo z. Gira para as mangas ficarem em x e a frente
+/* gira para as mangas ficarem em x (a baby look vem com elas em z) e a frente
    (o lado de decote mais fundo) para +z */
 function orientar(geo, giro) {
   geo.rotateY(giro);
@@ -243,8 +106,8 @@ function orientar(geo, giro) {
   if (topoF > topoT) geo.rotateY(Math.PI);
 }
 
-/* baby look: sem peça de gola no molde. Classifica as peças pelas ilhas do molde e mede tudo pela geometria */
-function prepararFeminina(geo, ext, perfil) {
+/* classifica as peças pelas ilhas do molde e mede tudo pela geometria */
+function prepararModelo(geo, ext, perfil) {
   const p = geo.attributes.position, idx = geo.index.array, n = p.count;
   const pos = i => [p.getX(i), p.getY(i), p.getZ(i)];
   // ilhas (peças): pontos ligados por triângulos
@@ -391,7 +254,7 @@ function prepararFeminina(geo, ext, perfil) {
   geo.setAttribute('dManga', new THREE.BufferAttribute(dm, 1));
   geo.setAttribute('aMangaUV', new THREE.BufferAttribute(mu, 2));
 }
-const ESCALA_REAL_F = .806;   // real → modelo; a baby look usa a mesma relação medida na masculina
+const ESCALA_REAL_F = .806;   // real → modelo (medida da manga real de 28,2 cm num modelo de 74 cm)
 
 /* ---------- física leve do pano (mola) ----------
    Não é simulação de tecido (pesada demais para o site): cada ponto tem um peso de balanço
