@@ -38,7 +38,7 @@ export const DESIGN = {
     // número: padrão da camisa real (dígito 24,85 × 9,4 cm sem a borda, borda branca 0,3 cm, 2,4 cm entre dígitos),
     // direto sobre as listras. Se não couber, tudo encolhe junto.
     numero: {
-      altReal: .2485, largReal: .094, bordaReal: .003, espacoReal: .024, largMax: .4,
+      altReal: .2485, largReal: .094, bordaReal: .003, espacoReal: .024, largMaxReal: .34, espacoMinReal: .006,   // 4 caracteres: cabe em 34 cm reais nas costas
       // alinhamento com as listras, contadas de cima para baixo nas costas (a 1ª vermelha é a dos ombros);
       // pos = fração da listra a partir do topo dela. A altura sai daqui; largura, borda e espaço
       // acompanham na proporção da camisa real.
@@ -215,7 +215,10 @@ export function criarEstampa(resolucao = 1024) {
       let sx = N.largReal * prop / (m0.actualBoundingBoxLeft + m0.actualBoundingBoxRight), gap = N.espacoReal * prop;
       const dig = [...str].map(c => { const m = g.measureText(c); return { c, esq: m.actualBoundingBoxLeft, larg: m.actualBoundingBoxLeft + m.actualBoundingBoxRight, sobe: m.actualBoundingBoxAscent }; });
       const total = () => dig.reduce((s, d) => s + d.larg * sx, 0) + gap * (dig.length - 1);
-      if (total() > N.largMax) { const r = N.largMax / total(); sx *= r; gap *= r; }
+      // não cabe: primeiro aproxima os caracteres (até o espaço mínimo), depois estreita todos por igual
+      const largMax = N.largMaxReal * prop;
+      if (total() > largMax && dig.length > 1) gap = Math.max(N.espacoMinReal * prop, gap - (total() - largMax) / (dig.length - 1));
+      if (total() > largMax) sx *= (largMax - gap * (dig.length - 1)) / (total() - gap * (dig.length - 1));
       const pintar = (cor, raio) => {                        // raio > 0: borda (o dígito repetido em volta, em branco)
         let x = total() / 2;
         g.fillStyle = cor; g.textBaseline = 'alphabetic'; g.textAlign = 'left';
