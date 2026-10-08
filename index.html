@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Camiseta Rep. Tumba</title>
+<meta name="description" content="Monte sua camisa de jogo da Rep. Tumba com nome e número e pague no Pix.">
+<meta name="theme-color" content="#0a0a0c">
+<link rel="icon" type="image/png" href="assets/img/escudo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Rajdhani:wght@700&family=Saira:wght@600;700;800&family=Saira+Condensed:wght@600;700;800&family=Saira+Extra+Condensed:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div class="bg" aria-hidden="true"><i></i><i></i><i></i></div>
+
+<header class="top">
+  <div class="wrap top-in">
+    <a class="brand" href="#inicio"><img class="brand-mark" src="assets/img/escudo.png" alt=""><span>Rep. Tumba</span></a>
+    <nav class="steps" aria-label="Etapas do pedido">
+      <a href="#dados" data-step="dados" aria-label="Etapa 1: Dados"><svg class="estrela" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.6l3.1 6.6 7.2.9-5.3 5 1.4 7.2L12 17.8l-6.4 3.5 1.4-7.2-5.3-5 7.2-.9z"/></svg><b>1</b></a>
+      <a href="#camisa" data-step="camisa" aria-label="Etapa 2: Camisa"><svg class="estrela" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.6l3.1 6.6 7.2.9-5.3 5 1.4 7.2L12 17.8l-6.4 3.5 1.4-7.2-5.3-5 7.2-.9z"/></svg><b>2</b></a>
+      <a href="#pagamento" data-step="pagamento" aria-label="Etapa 3: Pagamento"><svg class="estrela" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.6l3.1 6.6 7.2.9-5.3 5 1.4 7.2L12 17.8l-6.4 3.5 1.4-7.2-5.3-5 7.2-.9z"/></svg><b>3</b></a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<section id="inicio" class="hero">
+  <div class="wrap hero-in">
+    <div class="hero-copy">
+      <p class="kicker"><span class="stars">★★★</span> Rep. Tumba</p>
+      <h1>A listradinha<br><em>mais querida do interior</em></h1>
+      <p class="lead">Personalizada com o seu nome e número. Monte o pedido em três passos e pague no Pix.</p>
+      <div class="hero-cta">
+        <a class="btn" href="#dados">Montar meu pedido <span class="arrow">→</span></a>
+        <span class="price-tag" id="heroPrice"></span>
+      </div>
+      <div class="scroll-cue">Role para começar</div>
+    </div>
+    <div class="hero-art" aria-hidden="true"><div class="stripes"></div><img class="hero-crest" src="assets/img/escudo.png" alt=""></div>
+  </div>
+</section>
+
+<form id="pedido" novalidate>
+
+<section id="dados" class="sec" data-sec>
+  <div class="wrap">
+    <header class="sec-head"><span class="sec-num" role="img" aria-label="Etapa 1"><svg class="estrela" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.6l3.1 6.6 7.2.9-5.3 5 1.4 7.2L12 17.8l-6.4 3.5 1.4-7.2-5.3-5 7.2-.9z"/></svg><b>1</b></span><div><h2>Seus dados</h2><p>Para identificarmos o seu pedido e falarmos com você.</p></div></header>
+    <div class="card form-card">
+      <div class="field">
+        <label for="nome">Nome completo</label>
+        <input id="nome" name="nome" type="text" autocomplete="name" placeholder="Ex.: João da Silva" maxlength="80" required>
+        <small class="msg" aria-live="polite"></small>
+      </div>
+      <div class="field">
+        <label for="apelido">Apelido</label>
+        <input id="apelido" name="apelido" type="text" autocomplete="nickname" placeholder="Como te chamam" maxlength="40" required>
+        <small class="msg" aria-live="polite"></small>
+      </div>
+      <div class="field">
+        <label for="celular">Celular (WhatsApp)</label>
+        <input id="celular" name="celular" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="(19) 99999-9999" maxlength="15" required>
+        <small class="msg" aria-live="polite"></small>
+      </div>
+      <div class="actions"><button type="button" class="btn" data-next="dados">Continuar <span class="arrow">→</span></button></div>
+    </div>
+  </div>
+</section>
+
+<section id="camisa" class="sec" data-sec>
+  <div class="wrap">
+    <header class="sec-head"><span class="sec-num" role="img" aria-label="Etapa 2"><svg class="estrela" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.6l3.1 6.6 7.2.9-5.3 5 1.4 7.2L12 17.8l-6.4 3.5 1.4-7.2-5.3-5 7.2-.9z"/></svg><b>2</b></span><div><h2>Personalize a sua listradinha</h2><p>Gire a camisa e veja nome e número aplicados na hora.</p></div></header>
+    <div class="custom">
+      <div class="viewer-col">
+        <div class="viewer" id="viewer">
+          <canvas id="shirt3d" role="img" aria-label="Pré-visualização 3D da camisa"></canvas>
+          <p class="nogl" id="viewerMsg">Carregando 3D…</p>
+          <p class="hint" id="hint">Arraste para girar · role para zoom</p>
+          <span class="badge" id="badge"></span>
+          <div class="viewer-ui">
+            <div class="pill" role="group" aria-label="Lado da camisa">
+              <button type="button" data-side="front" class="on">Frente</button>
+              <button type="button" data-side="back">Costas</button>
+            </div>
+            <div class="pill zoom" role="group" aria-label="Zoom">
+              <button type="button" data-zoom="-1" aria-label="Afastar">−</button>
+              <button type="button" data-zoom="1" aria-label="Aproximar">+</button>
+              <button type="button" class="reset" data-reset tabindex="-1" aria-label="Voltar à visão inicial" title="Voltar à visão inicial"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4.5h4.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card controls">
+        <fieldset class="field" id="fsGenero">
+          <legend>Modelagem</legend>
+          <div class="seg">
+            <input type="radio" name="genero" id="gM" value="Masculino"><label for="gM">Masculina</label>
+            <input type="radio" name="genero" id="gF" value="Feminino"><label for="gF">Feminina</label>
+          </div>
+          <small class="msg" aria-live="polite"></small>
+        </fieldset>
+
+        <div class="row2">
+          <div class="field">
+            <label for="camisaNome">Nome na camisa <span class="count" id="cNome">0/12</span></label>
+            <input id="camisaNome" name="camisaNome" type="text" class="upper" maxlength="12" placeholder="JOGADOR" autocomplete="off" autocapitalize="characters" spellcheck="false" required>
+            <small class="msg" aria-live="polite"></small>
+          </div>
+          <div class="field">
+            <label for="camisaNumero">Número <span class="count" id="cNum">0/4</span></label>
+            <input id="camisaNumero" name="camisaNumero" type="text" class="upper" maxlength="4" placeholder="10" autocomplete="off" autocapitalize="characters" spellcheck="false" required>
+            <small class="msg" aria-live="polite"></small>
+          </div>
+        </div>
+
+        <fieldset class="field" id="fsTamanho">
+          <legend>Tamanho</legend>
+          <div class="sizes" id="sizes"></div>
+          <small class="msg" aria-live="polite"></small>
+        </fieldset>
+
+        <div class="measures" id="measures"></div>
+        <p class="measures-note" id="measuresNote"></p>
+
+        <details class="table">
+          <summary>Tabela de medidas</summary>
+          <div id="sizeTable"></div>
+        </details>
+
+        <div class="actions"><button type="button" class="btn" data-next="camisa">Ir para o pagamento <span class="arrow">→</span></button></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="pagamento" class="sec" data-sec>
+  <div class="wrap">
+    <header class="sec-head"><span class="sec-num" role="img" aria-label="Etapa 3"><svg class="estrela" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.6l3.1 6.6 7.2.9-5.3 5 1.4 7.2L12 17.8l-6.4 3.5 1.4-7.2-5.3-5 7.2-.9z"/></svg><b>3</b></span><div><h2>Pagamento</h2><p>Pague no Pix e anexe o comprovante para finalizar.</p></div></header>
+    <div class="pay">
+      <div class="card pix">
+        <div class="pix-top"><span class="pix-brand">Valor via Pix</span><strong class="price" id="price">R$ —</strong></div>
+        <div class="qr" id="qr"></div>
+        <div>
+          <span class="label">Pix copia e cola</span>
+          <div class="copy"><code id="pixCode">—</code><button type="button" class="btn-ghost" data-copy="pixCode">Copiar</button></div>
+        </div>
+        <div>
+          <span class="label">Chave Pix</span>
+          <div class="copy"><code id="pixKey">—</code><button type="button" class="btn-ghost" data-copy="pixKey">Copiar</button></div>
+        </div>
+      </div>
+
+      <div class="card finish">
+        <div class="field" id="fComp">
+          <span class="label">Comprovante de pagamento</span>
+          <div class="drop" id="drop">
+            <input type="file" id="comprovante" accept="image/*,application/pdf" aria-label="Anexar comprovante">
+            <div class="drop-empty" id="dropEmpty">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+              <b>Toque para anexar</b>
+              <small>Print ou PDF do comprovante, até 5 MB</small>
+            </div>
+            <div class="drop-file" id="dropFile" hidden>
+              <span class="thumb" id="thumb"></span>
+              <span class="fname"><b id="fileName"></b><small>Pronto para enviar</small></span>
+              <button type="button" class="btn-ghost" id="fileSwap">Trocar</button>
+            </div>
+          </div>
+          <small class="msg" aria-live="polite"></small>
+        </div>
+
+        <div class="summary">
+          <h3>Resumo do pedido</h3>
+          <dl id="summary"></dl>
+        </div>
+
+        <p class="form-error" id="formError" role="alert" hidden></p>
+        <button type="submit" class="btn btn-block" id="submitBtn">Finalizar pedido</button>
+        <p class="fine">O pedido é confirmado depois que conferirmos o pagamento.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</form>
+</main>
+
+<footer><b>Rep. Tumba</b> · Camisa de jogo<small class="credito">Modelos 3D baseados em <a href="https://sketchfab.com/3d-models/men-regular-apparel-fit-sporty-t-shirt-4d055bb8c1e04549a4b2dac7b27ebb2c" target="_blank" rel="noopener">“Men Regular Apparel Fit Sporty T-Shirt”</a> de <a href="https://sketchfab.com/binaryclothofficial" target="_blank" rel="noopener">BINARYCLOTH</a> e <a href="https://sketchfab.com/3d-models/t-shirt-for-female-fbd56879e5c54b53b3d75d987342c8f8" target="_blank" rel="noopener">“T-Shirt for Female”</a> de DaaGHrii, licença <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> (modificados).</small></footer>
+
+<dialog id="done" class="done" aria-labelledby="doneTitle">
+  <canvas class="confete" id="confete" aria-hidden="true"></canvas>
+  <div class="done-card">
+  <div class="done-faixa" aria-hidden="true"></div>
+  <div class="done-in">
+    <div class="done-estrelas" aria-hidden="true">
+      <svg class="estrela" viewBox="0 0 24 24"><path d="M12 1.6l3.1 6.6 7.2.9-5.3 5 1.4 7.2L12 17.8l-6.4 3.5 1.4-7.2-5.3-5 7.2-.9z"/></svg>
+      <svg class="estrela" viewBox="0 0 24 24"><path d="M12 1.6l3.1 6.6 7.2.9-5.3 5 1.4 7.2L12 17.8l-6.4 3.5 1.4-7.2-5.3-5 7.2-.9z"/></svg>
+      <svg class="estrela" viewBox="0 0 24 24"><path d="M12 1.6l3.1 6.6 7.2.9-5.3 5 1.4 7.2L12 17.8l-6.4 3.5 1.4-7.2-5.3-5 7.2-.9z"/></svg>
+    </div>
+    <p class="done-kicker">Rep. Tumba</p>
+    <h2 id="doneTitle">Pedido <em>confirmado</em></h2>
+    <span class="done-id" id="doneId"></span>
+    <p class="done-oi" id="doneText"></p>
+
+    <div class="done-camisa">
+      <img id="doneFoto" alt="Sua camisa personalizada, vista de costas" hidden>
+      <dl class="done-ficha">
+        <div><dt>Nas costas</dt><dd id="doneNome"></dd></div>
+        <div><dt>Número</dt><dd id="doneNum"></dd></div>
+        <div><dt>Modelagem</dt><dd id="doneMod"></dd></div>
+        <div><dt>Tamanho</dt><dd id="doneTam"></dd></div>
+        <div><dt>Valor</dt><dd id="doneValor"></dd></div>
+      </dl>
+    </div>
+
+    <ol class="done-passos">
+      <li class="feito"><b>Pedido recebido</b><span>Seus dados e o comprovante chegaram para a Rep.</span></li>
+      <li class="agora"><b>Conferência do Pix</b><span>Vamos confirmar o pagamento.</span></li>
+      <li><b>Contato no WhatsApp</b><span id="doneZap">Chamamos você para combinar a entrega.</span></li>
+      <li><b>Produção e entrega</b><span>Sua listradinha fica pronta e vai para as suas mãos.</span></li>
+    </ol>
+
+    <p class="done-guarde">Guarde o número do pedido. Se precisar falar com a gente, é só informar.</p>
+    <button type="button" class="btn btn-block" id="doneBtn">Fazer outro pedido</button>
+  </div>
+  </div>
+</dialog>
+
+<script src="js/vendor/qrcode.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

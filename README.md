@@ -1,6 +1,6 @@
 # Site Reptumba
 
-Site do Reptumba.
+Página de pedido da camisa de jogo da Rep. Tumba: dados, personalização com prévia em 3D e pagamento via Pix.
 
 ## Como abrir o site localmente
 
@@ -10,5 +10,44 @@ Site do Reptumba.
    git clone https://github.com/igorfilleti/sitereptumba.git
    ```
 
-2. Entre na pasta do projeto e abra a página principal (`index.html`, quando
-   ela for adicionada) no navegador — basta dar dois cliques no arquivo.
+2. Na pasta do projeto, inicie o servidor local (não precisa instalar nada):
+
+   ```bash
+   powershell -ExecutionPolicy Bypass -File servidor.ps1
+   ```
+
+3. Abra http://localhost:8080 no navegador.
+
+O site usa módulos JavaScript, então não funciona abrindo o `index.html` com dois cliques.
+
+## Receber os pedidos
+
+Os pedidos vão para uma planilha e os comprovantes para uma pasta do seu Google Drive.
+Passo a passo em [apps-script/LEIA-ME.md](apps-script/LEIA-ME.md). Enquanto o endereço do script
+não estiver em `CONFIG.scriptUrl` (js/app.js), o site recusa o envio e avisa a pessoa.
+
+## Estrutura
+
+```
+index.html              página
+css/style.css           estilos
+js/app.js               formulário, Pix e envio do pedido (CONFIG no topo)
+js/camisa3d/            camisa 3D (three.js)
+  viewer.js             cena, luz, câmera e controles
+  modelo.js             carrega o modelo 3D e pinta o design na textura dele
+  estampa.js            design (arte da Icone): posições de logos, nome e número
+js/vendor/qrcode.js     gerador de QR Code (MIT)
+assets/img/             escudo, "Rep. Tumba", Unicamp e "icone"
+assets/models/masculina/ modelo 3D da masculina (camisa.glb, ~490 KB)
+assets/models/feminina/ modelo 3D da baby look (scene.gltf + scene.bin)
+servidor.ps1            servidor local para testes
+apps-script/            script do Google que recebe os pedidos (planilha + comprovantes no Drive)
+```
+
+## Créditos
+
+Modelo da masculina baseado em ["Men Regular Apparel Fit Sporty T-Shirt"](https://sketchfab.com/3d-models/men-regular-apparel-fit-sporty-t-shirt-4d055bb8c1e04549a4b2dac7b27ebb2c)
+de [BINARYCLOTH](https://sketchfab.com/binaryclothofficial), licença [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/). Modificado: texturas removidas; malha compactada; arte da Rep. Tumba aplicada.
+
+Modelo da baby look baseado em ["T-Shirt for Female"](https://sketchfab.com/3d-models/t-shirt-for-female-fbd56879e5c54b53b3d75d987342c8f8)
+de DaaGHrii, licença [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/). Modificado: textura original removida; arte da Rep. Tumba aplicada.
