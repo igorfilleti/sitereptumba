@@ -193,7 +193,7 @@ function renderSizes() {
   const g = gKey(), list = TAMANHOS[g];
   $('#sizes').innerHTML = list.map((s, i) => {
     const [main, sub] = s.t.split(' ');
-    return `<input type="radio" name="tamanho" id="t${i}" value="${s.t}" ${i === state.idx ? 'checked' : ''}><label for="t${i}"><b>${main}</b>${sub ? `<small>${sub}</small>` : '<small>&nbsp;</small>'}</label>`;
+    return `<input type="radio" name="tamanho" id="t${i}" value="${s.t}" ${i === state.idx ? 'checked' : ''}><label for="t${i}"><b>${main}</b>${sub ? `<small>${sub}</small>` : ''}</label>`;
   }).join('');
   $$('#sizes input').forEach(r => r.addEventListener('change', () => {
     state.idx = +r.id.slice(1); if ($('#fsTamanho').classList.contains('invalid')) checkTamanho(); refreshModel();
