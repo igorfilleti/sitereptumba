@@ -5,7 +5,8 @@
    design da Rep. Tumba na textura dela.
    ===================================================================== */
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.min.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.min.js';
 import { DESIGN, COR, limitesListras } from './estampa.js';
 
 /* trama do tecido dry-fit (mapa de normais gerado por código, repetido pelo molde) */
@@ -40,13 +41,14 @@ const PERFIS = {
   // masculina M de referência: 52 × 74 cm; manga raglan no 3D, pintada como a manga da camisa real
   M: { url: new URL('../../assets/models/masculina/camisa.glb', import.meta.url).href, altura: ALTURA, ref: [52, ALTURA * 100], giro: 0, mangaReal: true },
   // baby look M de referência: 44 × 60 cm
-  F: { url: new URL('../../assets/models/feminina/scene.gltf', import.meta.url).href, altura: .60, ref: [44, 60], giro: Math.PI / 2 }
+  F: { url: new URL('../../assets/models/feminina/camisa.glb', import.meta.url).href, altura: .60, ref: [44, 60], giro: Math.PI / 2 }
 };
 export const referencia = g => PERFIS[g].ref;
 
 export async function carregarModelo(g = 'M') {
   const P = PERFIS[g];
-  const gltf = await new GLTFLoader().loadAsync(P.url);
+  // os .glb vêm compactados com meshopt (malha 3 a 5 vezes menor); o decodificador é pequeno
+  const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(P.url);
   gltf.scene.updateMatrixWorld(true);
   let malha = null;
   gltf.scene.traverse(o => { if (o.isMesh) malha = o; });

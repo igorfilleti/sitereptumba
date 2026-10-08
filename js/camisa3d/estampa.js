@@ -82,13 +82,13 @@ export function listraDeCima(lim, L, cor, n) {
 // rugosidade da borracha em relação ao tecido (no mapa de brilho: #ffffff = tecido, mais escuro = mais liso)
 const BRILHO_BORRACHA = '#7a7a7a';
 
-// assets/img/rep.png: a tinta vai do topo do R/T (linha 1) à perninha do p (linha 114) de 116
+// assets/img/rep.webp: a tinta vai do topo do R/T (linha 1) à perninha do p (linha 114) de 116
 const REP_TINTA = { inicio: 1 / 116, fim: 115 / 116 };
 
-// assets/img/unicamp.png: o símbolo vai do topo até 79,5% da altura; o texto, de 90% até a base
+// assets/img/unicamp.webp: o símbolo vai do topo até 79,5% da altura; o texto, de 90% até a base
 const UNICAMP_SIMBOLO_FIM = .795, UNICAMP_TEXTO_INICIO = .9;
 
-// círculo preto dentro de assets/img/escudo.png (frações da largura/altura da imagem), medido na imagem
+// círculo preto dentro de assets/img/escudo.webp (frações da largura/altura da imagem), medido na imagem
 const CIRCULO_ESCUDO = { cx: .49, cy: .508, diam: .776 };
 
 /* separa as estrelas (peças soltas e pequenas) do corpo do escudo; o resultado fica guardado na imagem */
@@ -161,20 +161,6 @@ export function criarEstampa(resolucao = 1024) {
 
     const imagem = (g, im, X0, Y0, w) => { if (im) g.drawImage(im, X0 - w / 2, Y0 - w * im.height / im.width / 2, w, w * im.height / im.width); };
     const quadro = (lado, cx, cy, w, h) => { const [x0, y0] = pos[lado](lado === 'frente' ? cx - w / 2 : cx + w / 2, cy + h / 2); ctxDe[lado].fillStyle = COR.branco; ctxDe[lado].fillRect(x0, y0, w * k, h * k); };
-    const medir = (g, str, alt, fonte, peso) => { g.letterSpacing = '0px'; g.font = `${peso} ${alt * k / .72}px ${fonte}`; return g.measureText(str).width / k; };
-    const txt = (lado, str, x, y, alt, largMax, fonte, peso, espaco = 0) => {   // espaco: entre letras, em em
-      if (!str) return;
-      const g = ctxDe[lado], [X0, Y0] = pos[lado](x, y);
-      let fs = alt * k / .72;
-      g.letterSpacing = `0px`;
-      g.font = `${peso} ${fs}px ${fonte}`;
-      const w = g.measureText(str).width;
-      if (w > largMax * k) { fs *= largMax * k / w; g.font = `${peso} ${fs}px ${fonte}`; }
-      g.letterSpacing = `${espaco * fs}px`;
-      const mt = g.measureText(str), off = (mt.actualBoundingBoxAscent - mt.actualBoundingBoxDescent) / 2 || fs * .36;
-      g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.fillStyle = COR.preto;
-      g.fillText(str, X0, Y0 + off);
-    };
 
     // nome letra por letra: altura e largura fixas por letra e espaço fixo entre elas (medidas reais → modelo)
     const nomeFixo = (str, y) => {

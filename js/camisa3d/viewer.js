@@ -5,15 +5,15 @@
    Só desenha quando algo muda (girar, zoom, digitar, pano balançando): parada, não gasta nada.
    ===================================================================== */
 import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.min.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.min.js';
 import { carregarModelo, criarForno, referencia, BALANCO } from './modelo.js';
 import { criarEstampa } from './estampa.js';
 
 const MOBILE = Math.min(screen.width, screen.height) < 600;
 const RELEVO = 20;                                // força do alto-relevo dos bordados
 const LUZ = { ambiente: .5, principal: 1.25 };  // calibrada: vermelho ≈ rgb(220,10,20), branco ≈ 235 de frente, sem estourar
-const IMAGENS = { escudo: 'escudo.png', rep: 'rep.png', unicamp: 'unicamp.png', icone: 'icone.png' };
+const IMAGENS = { escudo: 'escudo.webp', rep: 'rep.webp', unicamp: 'unicamp.webp', icone: 'icone.webp' };   // WebP sem perda
 
 /* sombra suave no "chão" */
 function sombra() {
@@ -98,7 +98,8 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
     im.onload = () => { img[k] = im; for (const x of Object.values(modelos)) x.cheio = false; pedirDesenho(); };
     im.src = new URL(`../../assets/img/${arq}`, import.meta.url).href;
   }
-  if (document.fonts) for (const f of [`800 80px "Saira Extra Condensed"`, `700 80px "Rajdhani"`, `800 80px "Saira Condensed"`]) document.fonts.load(f).then(() => { versaoArte++; pedirDesenho(false); }, () => {});
+  // Rajdhani: a única fonte desenhada na camisa (nome e números)
+  if (document.fonts) document.fonts.load(`700 80px "Rajdhani"`).then(() => { versaoArte++; pedirDesenho(false); }, () => {});
 
   // carrega cada modelagem só quando ela é escolhida pela primeira vez
   function carregar(g) {
