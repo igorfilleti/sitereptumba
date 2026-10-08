@@ -170,7 +170,7 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
   const esconderDica = () => { if (hint) hint.style.opacity = 0; };
   /* giro de descanso: a camisa gira sozinha, devagar, quando ninguém está prestando atenção nela
      (sem mexer há alguns segundos, mouse fora dela, sem zoom e sem digitar nome/número) */
-  const GIRO = { ocioso: 4, velocidade: .8 };                    // segundos parado antes de girar; velocidade (≈ 1 volta a cada 75 s)
+  const GIRO = { ocioso: 4, velocidade: 1.5 };                   // segundos parado antes de girar; velocidade (1 volta a cada 60 ÷ 1,5 = 40 s)
   let ultimaAtencao = -Infinity, sobreCamisa = false, arrastando = false, rampaGiro = 0;
   const atencao = () => { ultimaAtencao = performance.now(); };
   const reduzirMovimento = matchMedia('(prefers-reduced-motion: reduce)').matches;
