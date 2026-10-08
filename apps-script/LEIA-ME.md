@@ -44,6 +44,18 @@ scriptUrl: 'https://script.google.com/macros/s/.../exec',
 - No site, a pessoa só vê "Pedido confirmado" quando a planilha gravou de verdade; se algo
   falhar, aparece o erro e ela pode tentar de novo.
 
+## E-mail de confirmação
+
+A cada pedido gravado, o script manda um e-mail de confirmação para o e-mail que a pessoa digitou: com
+o número do pedido, a foto da camisa personalizada, a ficha e a forma de pagamento. Ele sai da conta
+Google dona do script, com o nome "Rep. Tumba", e as respostas chegam nessa conta.
+
+- Limite do Gmail comum: **100 e-mails por dia**.
+- Se o envio falhar, o pedido continua gravado; a coluna **Confirmação por e-mail** mostra "Enviado" ou o erro.
+- Para ver como fica: no editor, escolha **testarEmail** e clique em **Executar**. Chega um exemplo
+  no seu e-mail (nada é gravado na planilha). Na primeira vez o Google pede permissão para
+  **enviar e-mails como você**: permita.
+
 ## Se mudar o script depois
 
 **Implantar → Gerenciar implantações → lápis → Versão: Nova versão → Implantar.**
