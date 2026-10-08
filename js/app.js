@@ -60,7 +60,7 @@ const Shirt = (() => {
     console.error('Camisa 3D:', err);
     msg.textContent = 'Não foi possível abrir a visualização 3D, mas você pode continuar o pedido normalmente.';
   };
-  import('./camisa3d/viewer.js?v=20261008g')
+  import('./camisa3d/viewer.js?v=20261008h')
     .then(m => {
       real = m.createShirt($('#shirt3d'), { onPronto: () => { msg.hidden = true; }, onErro: falhou });
       for (const [k, a] of Object.entries(fila)) real[k](...a);
@@ -206,6 +206,46 @@ function syncShirtText() {
   el[id].addEventListener('focus', () => Shirt.showSide('back'));
 });
 
+/* celular: ao digitar nome/número, a camisa fica presa no topo da parte visível da tela (acima do teclado)
+   e o campo logo abaixo dela, para a pessoa ver cada letra entrar na camisa na hora */
+(function modoEdicao() {
+  const col = $('.viewer-col'), vv = window.visualViewport, raiz = document.documentElement;
+  const ids = ['camisaNome', 'camisaNumero'];
+  const celular = () => matchMedia('(max-width:860px)').matches;
+  const espaco = document.createElement('div');                // segura o lugar da camisa na página
+  let ativo = null;
+  function posicionar() {
+    if (!ativo) return;
+    const topo = vv ? vv.offsetTop : 0, alt = vv ? vv.height : innerHeight;
+    const camisaAlt = Math.round(Math.max(170, Math.min(alt * .46, 340)));
+    raiz.style.setProperty('--ed-topo', topo + 'px');
+    raiz.style.setProperty('--ed-alt', camisaAlt + 'px');
+    // o campo logo abaixo da camisa (e acima do teclado)
+    const d = ativo.getBoundingClientRect().top - (topo + camisaAlt + 26);
+    if (Math.abs(d) > 4) window.scrollBy(0, d);
+  }
+  function entrar(e) {
+    if (!celular()) return;
+    if (!ativo) { espaco.style.height = col.offsetHeight + 'px'; col.before(espaco); }
+    ativo = e.target;
+    document.body.classList.add('editando');
+    posicionar();
+    setTimeout(posicionar, 300); setTimeout(posicionar, 700);  // depois que o teclado termina de abrir
+  }
+  function sair() {
+    if (!ativo) return;
+    ativo = null;
+    document.body.classList.remove('editando');
+    espaco.remove();
+  }
+  ids.forEach(id => {
+    el[id].addEventListener('focus', entrar);
+    // trocar de um campo para o outro não sai do modo edição
+    el[id].addEventListener('blur', () => setTimeout(() => { if (!ids.includes((document.activeElement || {}).id)) sair(); }, 60));
+  });
+  if (vv) { vv.addEventListener('resize', posicionar); vv.addEventListener('scroll', posicionar); }
+})();
+
 /* modelagem e tamanho (radios: só uma opção por vez) */
 function renderSizes() {
   const g = gKey(), list = TAMANHOS[g];
@@ -335,7 +375,6 @@ form.addEventListener('submit', async e => {
     } finally { clearTimeout(limite); }
     if (!data || !data.ok || !data.pedido) throw new Error((data && data.erro) || 'Não foi possível registrar o pedido. Tente de novo.');
     const pedido = data.pedido;
-    $('#doneId').textContent = '#' + pedido;
     mostrarConfirmacao(payload);
   } catch (err) {
     errBox.textContent = (err && err.message) || 'Não foi possível registrar o pedido. Tente de novo.';
