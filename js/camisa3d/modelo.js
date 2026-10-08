@@ -327,7 +327,7 @@ export function criarForno(renderer, geo, ext, telas, tamanho = 2048) {
    Em cada altura, mede o raio do tronco em volta do eixo do corpo (por ângulo), suaviza esse
    contorno em volta e na altura (some as ondas do pano, fica o formato de peito/costas/laterais)
    e encaixa frente e costas nele. Perto das costuras com mangas e gola o efeito some aos poucos. */
-export const TRONCO_LISO = { forca: 1, raioCostura: .02, faixasY: 60, faixasA: 72, suavY: 3, suavA: 4, ombroDesde: .58, celOmbro: .015, suavOmbro: 2.5 };
+export const TRONCO_LISO = { forca: 1, raioCostura: .05, faixasY: 60, faixasA: 72, suavY: 3, suavA: 4 };
 function troncoLiso(geo, L) {
   const C = TRONCO_LISO; if (!C.forca) return;
   const p = geo.attributes.position, uv = geo.attributes.uv, n = p.count;
@@ -391,7 +391,6 @@ function troncoLiso(geo, L) {
     p.setX(i, x * k); p.setZ(i, z * k);
   }
   p.needsUpdate = true;
-  ombrosLisos(geo, L, tronco, distCostura, suave);
   // normais lisas, somadas nos pontos repetidos das costuras (sem quebra de luz)
   const idx = geo.index.array, grupo = new Int32Array(n), mapa = new Map(); let ng = 0;
   for (let i = 0; i < n; i++) { const ch = Math.round(p.getX(i) * 1e5) + ',' + Math.round(p.getY(i) * 1e5) + ',' + Math.round(p.getZ(i) * 1e5); let g = mapa.get(ch); if (g === undefined) { g = ng++; mapa.set(ch, g); } grupo[i] = g; }
@@ -410,28 +409,4 @@ function troncoLiso(geo, L) {
     N.setXYZ(i, s * x / l, s * y / l, s * z / l);
   }
   N.needsUpdate = true;
-}
-
-/* ombros: no alto do tronco, nas partes viradas para cima, alisa a altura do tecido (o "contorno de
-   cima"), pela mesma razão liso/original usada nas laterais; some junto às costuras */
-function ombrosLisos(geo, L, tronco, distCostura, suave) {
-  const C = TRONCO_LISO, p = geo.attributes.position, N = geo.attributes.normal, n = p.count, cel = C.celOmbro;
-  const usa = new Uint8Array(n), soma = new Map(), cont = new Map(), ch = (x, z) => Math.floor(x / cel) + ',' + Math.floor(z / cel);
-  for (let i = 0; i < n; i++) {
-    if (!tronco[i] || p.getY(i) < L * C.ombroDesde || N.getY(i) < .35) continue;   // só o lado de fora, virado para cima
-    usa[i] = 1; const k = ch(p.getX(i), p.getZ(i)); soma.set(k, (soma.get(k) || 0) + p.getY(i)); cont.set(k, (cont.get(k) || 0) + 1);
-  }
-  const bruto = new Map(); for (const [k, s] of soma) bruto.set(k, s / cont.get(k));
-  const r = Math.ceil(C.suavOmbro * 2.5), liso = new Map();
-  for (const k of bruto.keys()) {
-    const [cx, cz] = k.split(',').map(Number); let s = 0, w = 0;
-    for (let a = -r; a <= r; a++) for (let b = -r; b <= r; b++) { const v = bruto.get((cx + a) + ',' + (cz + b)); if (v === undefined) continue; const g = Math.exp(-(a * a + b * b) / (2 * C.suavOmbro * C.suavOmbro)); s += v * g; w += g; }
-    liso.set(k, s / w);
-  }
-  for (let i = 0; i < n; i++) {
-    if (!usa[i]) continue;
-    const k = ch(p.getX(i), p.getZ(i)), w = C.forca * suave(0, C.raioCostura, distCostura(i)) * suave(L * C.ombroDesde, L * (C.ombroDesde + .04), p.getY(i));
-    p.setY(i, p.getY(i) + Math.max(-.01, Math.min(.01, liso.get(k) - bruto.get(k))) * w);   // no máximo 1 cm
-  }
-  p.needsUpdate = true;
 }
