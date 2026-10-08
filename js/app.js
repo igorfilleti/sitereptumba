@@ -5,7 +5,7 @@
    CONFIGURAÇÃO — é só preencher aqui
    ===================================================================== */
 const CONFIG = {
-  scriptUrl: '',          // URL do App da Web do Google Apps Script (termina em /exec)
+  scriptUrl: 'https://script.google.com/macros/s/AKfycbxQU2ZrO2DjPgJ-5V5r7rlZt6400BudHFAWJlm9pUNpNo74GIUleucVbCt4ogtCRr0oSw/exec',   // URL do App da Web do Google Apps Script (termina em /exec)
   preco: 120,             // valor da camisa em reais, ex.: 120
   pix: {
     chave: 'f605963b-7532-47ee-95cd-1e67afe4041b',   // chave aleatória; chave Pix. Celular no formato +5519999999999
