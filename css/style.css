@@ -192,7 +192,7 @@ details.table tr.sel td{background:rgba(255,42,54,.14);color:#fff}
 .tbl-note{margin:0;padding:10px 12px;border-top:1px solid var(--line);color:var(--dim);font-size:13px}
 @media (max-width:860px){
   .custom{grid-template-columns:1fr;gap:14px}
-  .viewer-col{top:60px;z-index:5;margin:0 -16px;padding:0 16px 8px;background:linear-gradient(180deg,var(--bg) 85%,transparent)}
+  .viewer-col{top:60px;z-index:5}   /* sem fundo próprio: o cartão da camisa já cobre o que rola por baixo, e a estampa do fundo continua nas laterais */
   .viewer{aspect-ratio:auto;height:min(46svh,440px)}
 }
 
