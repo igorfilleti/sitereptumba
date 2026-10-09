@@ -60,7 +60,7 @@ const Shirt = (() => {
     console.error('Camisa 3D:', err);
     msg.textContent = 'Não foi possível abrir a visualização 3D, mas você pode continuar o pedido normalmente.';
   };
-  import('./camisa3d/viewer.js?v=20261008m')
+  import('./camisa3d/viewer.js?v=20261008n')
     .then(m => {
       real = m.createShirt($('#shirt3d'), { onPronto: () => { msg.hidden = true; }, onErro: falhou });
       for (const [k, a] of Object.entries(fila)) real[k](...a);
@@ -226,7 +226,7 @@ $$('.esp').forEach(e => e.addEventListener('pointerdown', ev => { ev.preventDefa
   const ids = ['camisaNome', 'camisaNumero'];
   const celular = () => matchMedia('(max-width:860px)').matches;
   const espaco = document.createElement('div');                // segura o lugar da camisa na página
-  let ativo = false, quadro = 0;
+  let ativo = false, quadro = 0, alturaSemTeclado = 0;
   const acompanhar = () => {
     if (!ativo || quadro) return;
     quadro = requestAnimationFrame(() => { quadro = 0; raiz.style.setProperty('--ed-topo', (vv ? vv.offsetTop : 0) + 'px'); });
@@ -241,6 +241,7 @@ $$('.esp').forEach(e => e.addEventListener('pointerdown', ev => { ev.preventDefa
       espaco.style.height = col.offsetHeight + 'px'; col.before(espaco);
       document.body.classList.add('editando');
       ativo = true;
+      alturaSemTeclado = vv ? vv.height : innerHeight;   // tela inteira, antes de o teclado abrir
       // um único rolamento: o campo logo abaixo da camisa
       const d = e.target.getBoundingClientRect().top - (camisaAlt + 110);   // abaixo da camisa e do espelho dos campos
       if (Math.abs(d) > 2) window.scrollTo({ top: scrollY + d, behavior: 'instant' });
@@ -260,6 +261,21 @@ $$('.esp').forEach(e => e.addEventListener('pointerdown', ev => { ev.preventDefa
     el[id].addEventListener('blur', () => setTimeout(() => { if (!ids.includes((document.activeElement || {}).id)) sair(); }, 60));
   });
   if (vv) { vv.addEventListener('resize', acompanhar); vv.addEventListener('scroll', acompanhar); }
+
+  // o modo edição só existe na área 2 e com o teclado aberto. No iPhone, fechar o teclado (OK ou rolar a
+  // página) deixa o campo selecionado sem teclado: aí, ou quando a área 2 sai da tela, ele termina sozinho
+  const encerrar = () => { if (!ativo) return; const a = document.activeElement; if (a && ids.includes(a.id)) a.blur(); sair(); };
+  // (a personalização precisa ocupar a faixa do meio da tela; uma pontinha dela no alto ou no pé não conta)
+  new IntersectionObserver(es => { if (!es[0].isIntersecting) encerrar(); }, { rootMargin: '-40% 0px -40% 0px' }).observe($('.custom'));
+  if (vv) {
+    let tecladoAberto = false;
+    vv.addEventListener('resize', () => {
+      if (!ativo) { tecladoAberto = false; return; }
+      // (comparado com a tela de quando o campo foi tocado: vale para iPhone e Android)
+      if (vv.height < alturaSemTeclado * .78) tecladoAberto = true;          // o teclado ocupa uns 40% da tela
+      else if (tecladoAberto && vv.height > alturaSemTeclado * .9) { tecladoAberto = false; encerrar(); }
+    });
+  }
 })();
 
 /* modelagem e tamanho (radios: só uma opção por vez) */
