@@ -7,8 +7,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.min.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.min.js';
-import { carregarModelo, criarForno, referencia, BALANCO } from './modelo.js?v=20261008m';
-import { criarEstampa } from './estampa.js?v=20261008m';
+import { carregarModelo, criarForno, referencia, BALANCO } from './modelo.js?v=20261008n';
+import { criarEstampa } from './estampa.js?v=20261008n';
 
 const MOBILE = Math.min(screen.width, screen.height) < 600;
 const RELEVO = 20;                                // força do alto-relevo dos bordados
@@ -168,6 +168,7 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
   const ZOOM = { min: .35, max: 1.4 }, PHI0 = Math.PI / 2 - .08, centro = new THREE.Vector3();   // visão inicial: de frente, levemente de cima
   const alvoFoco = new THREE.Vector3();                          // para onde a câmera olha (o centro, ou o ponto do zoom)
   const hint = document.getElementById('hint');
+  if (hint && matchMedia('(pointer:coarse)').matches) hint.textContent = 'Arraste para girar';   // celular: curta (o zoom é na pinça) e sem encostar no selo
   const esconderDica = () => { if (hint) hint.style.opacity = 0; };
   /* giro de descanso: a camisa gira sozinha, devagar. Para quando a pessoa clica/arrasta a camisa ou mexe
      numa opção de alteração (modelagem, nome, número, tamanho, frente/costas, zoom); volta depois de alguns
