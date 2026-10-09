@@ -210,10 +210,12 @@ details.table tr.sel td{background:rgba(255,42,54,.14);color:#fff}
 .esp{padding:8px 12px 9px;border-radius:12px;border:1px solid var(--line-2);background:var(--field);cursor:text}
 .esp small{display:block;font:600 11px/1.2 var(--cond);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 .esp b{display:block;min-height:22px;margin-top:3px;font:700 19px/1.15 var(--cond);letter-spacing:.05em;text-transform:uppercase;color:var(--text);white-space:nowrap;overflow:hidden}
-.esp b:empty::before{content:attr(data-vazio);color:#55555f}
+.esp b:empty::after{content:attr(data-vazio);color:#55555f}
 .esp.ativo{border-color:var(--red-hi);box-shadow:0 0 0 3px rgba(255,42,54,.16)}
-.esp.ativo b::after{content:"";display:inline-block;width:2px;height:18px;margin-left:2px;vertical-align:-2px;background:#fff;animation:cursor 1s steps(1) infinite}
-.esp.ativo b:empty::after{margin-left:-2px}
+/* cursor: no fim do texto digitado; com o campo vazio, no início (antes do exemplo apagado) */
+.esp.ativo b:not(:empty)::after,.esp.ativo b:empty::before{content:"";display:inline-block;width:2px;height:18px;vertical-align:-2px;background:#fff;animation:cursor 1s steps(1) infinite}
+.esp.ativo b:not(:empty)::after{margin-left:2px}
+.esp.ativo b:empty::before{margin-right:1px}
 @keyframes cursor{50%{opacity:0}}
 @media (max-width:860px){
 }
