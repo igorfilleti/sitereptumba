@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.min.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.min.js';
-import { DESIGN, COR, limitesListras } from './estampa.js?v=20261008l';
+import { DESIGN, COR, limitesListras } from './estampa.js?v=20261008m';
 
 /* trama do tecido dry-fit (mapa de normais gerado por código, repetido pelo molde) */
 function trama() {
@@ -258,6 +258,7 @@ function prepararModelo(geo, ext, perfil) {
     gl[i] = Math.sqrt(d);
   }
   geo.userData.compManga = compr;
+  geo.setAttribute('aArco', new THREE.BufferAttribute(arcoCostas(p, pc, n, ext), 1));
   // com costura traçada no forno, a peça da manga inteira vai como manga (o forno decide pelo plano)
   if (ext.costuras) for (let i = 0; i < n; i++) if (tipoDe(i) === 'mangaE' || tipoDe(i) === 'mangaD') pc[i] = 1;
   geo.setAttribute('aPeca', new THREE.BufferAttribute(pc, 1));
@@ -265,6 +266,40 @@ function prepararModelo(geo, ext, perfil) {
   geo.setAttribute('dManga', new THREE.BufferAttribute(dm, 1));
   geo.setAttribute('aMangaUV', new THREE.BufferAttribute(mu, 2));
 }
+/* arte das costas aplicada ao longo do tecido (como a sublimação, que estampa o tecido plano):
+   em vez do x de projeção, cada ponto das costas recebe a distância medida pela curva do corpo, do meio
+   das costas até ele, na mesma altura. Assim nome, número e "Rep. Tumba" não esticam perto das laterais */
+function arcoCostas(p, pc, n, ext) {
+  const BY = .02, BX = .01, nY = Math.ceil(ext.L / BY) + 2, nX = Math.ceil(ext.X / BX) + 2;
+  // perfil das costas: em cada faixa de altura e de |x|, o z mais para trás do tronco
+  const z = new Float32Array(nY * nX).fill(NaN);
+  for (let i = 0; i < n; i++) {
+    if (pc[i] < 2) continue;
+    const zi = p.getZ(i); if (zi > 0) continue;
+    const k = Math.round(p.getY(i) / BY) * nX + Math.round(Math.abs(p.getX(i)) / BX);
+    if (!(z[k] <= zi)) z[k] = zi;
+  }
+  const arco = new Float32Array(nY * nX);
+  for (let yb = 0; yb < nY; yb++) {
+    const linha = z.subarray(yb * nX, yb * nX + nX);
+    // completa os buracos com o vizinho conhecido e suaviza (média de 5) para o arco não pegar ruído da malha
+    let ult = NaN; for (let xb = 0; xb < nX; xb++) { if (isNaN(linha[xb])) linha[xb] = ult; else ult = linha[xb]; }
+    ult = NaN; for (let xb = nX - 1; xb >= 0; xb--) { if (isNaN(linha[xb])) linha[xb] = ult; else ult = linha[xb]; }
+    const lisa = Array.from(linha, (_, xb) => { let s = 0, c = 0; for (let d = -2; d <= 2; d++) { const v = linha[xb + d]; if (v === v && xb + d >= 0 && xb + d < nX) { s += v; c++; } } return c ? s / c : 0; });
+    let a = 0; arco[yb * nX] = 0;
+    for (let xb = 1; xb < nX; xb++) { a += Math.hypot(BX, lisa[xb] - lisa[xb - 1]); arco[yb * nX + xb] = a; }
+  }
+  const out = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const x = p.getX(i), fy = Math.max(0, Math.min(nY - 1.001, p.getY(i) / BY)), fx = Math.min(nX - 1.001, Math.abs(x) / BX);
+    const y0 = Math.floor(fy), x0 = Math.floor(fx), ty = fy - y0, tx = fx - x0;
+    const v = (yb, xb) => arco[yb * nX + xb];
+    const a = (v(y0, x0) * (1 - tx) + v(y0, x0 + 1) * tx) * (1 - ty) + (v(y0 + 1, x0) * (1 - tx) + v(y0 + 1, x0 + 1) * tx) * ty;
+    out[i] = Math.sign(x) * a;
+  }
+  return out;
+}
+
 // normal do plano que melhor passa pelos pontos (direção de menor espalhamento)
 function normalPlano(pts) {
   const m = [0, 1, 2].map(k => pts.reduce((t, q) => t + q[k], 0) / pts.length);
@@ -315,11 +350,11 @@ vec2 girarBalanco(vec2 v, float a) { float c = cos(a), s = sin(a); return vec2(c
 /* ---------- forno: pinta o design na textura, peça por peça ---------- */
 const VS = `
 uniform vec2 uDesloc;
-attribute float dManga, aPeca, aGola, aY;
+attribute float dManga, aPeca, aGola, aY, aArco;
 attribute vec2 aMangaUV;
-varying vec3 vP; varying vec2 vMu; varying float vDm, vPeca, vGola, vY;
+varying vec3 vP; varying vec2 vMu; varying float vDm, vPeca, vGola, vY, vArco;
 void main() {
-  vP = position; vY = aY; vMu = aMangaUV; vDm = dManga; vPeca = aPeca; vGola = aGola;
+  vP = position; vY = aY; vArco = aArco; vMu = aMangaUV; vDm = dManga; vPeca = aPeca; vGola = aGola;
   gl_Position = vec4(uv.x * 2. - 1. + uDesloc.x, uv.y * 2. - 1. + uDesloc.y, 0., 1.);
 }`;
 const FS = `
@@ -333,7 +368,7 @@ uniform vec2 uMangaWH;
 uniform float uLim[10];   // limites entre as 11 listras do tronco, da barra para cima
 uniform vec3 uManga;   // fim do punho, da branca e da vermelha (fração da manga, a partir do punho)
 uniform vec3 cBranco, cVermelho, cPreto;
-varying vec3 vP; varying vec2 vMu; varying float vDm, vPeca, vGola, vY;
+varying vec3 vP; varying vec2 vMu; varying float vDm, vPeca, vGola, vY, vArco;
 vec4 adesivo(sampler2D t, vec2 c) { return (c.x < 0. || c.x > 1. || c.y < 0. || c.y > 1.) ? vec4(0.) : texture2D(t, c); }
 void main() {
   // tronco: listras horizontais (a da barra é vermelha), com borda suavizada
@@ -353,7 +388,7 @@ void main() {
   // manga esquerda: o adesivo é desenhado no próprio molde, como na sublimação (fica reto e paralelo às listras)
   if (manga) { if (vMu.x < 90.) a = adesivo(tManga, vec2(.5 + vMu.x / uMangaWH.x, .5 + vMu.y / uMangaWH.y)); }
   else if (frente) a = adesivo(tFrente, vec2((vP.x + uExt.x) / (2. * uExt.x), vP.y / uExt.y));
-  else a = adesivo(tCostas, vec2((uExt.x - vP.x) / (2. * uExt.x), vP.y / uExt.y));
+  else a = adesivo(tCostas, vec2((uExt.x - vArco) / (2. * uExt.x), vP.y / uExt.y));   // costas: ao longo do tecido
   if (uModo == 2) {   // rugosidade: 1 = tecido; menor = mais liso (só na frente)
     vec4 b = frente ? adesivo(tBrilho, vec2((vP.x + uExt.x) / (2. * uExt.x), vP.y / uExt.y)) : vec4(0.);
     gl_FragColor = vec4(vec3(b.a > .5 ? b.g : 1.), 1.); return;

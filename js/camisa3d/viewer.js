@@ -7,8 +7,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.min.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.min.js';
-import { carregarModelo, criarForno, referencia, BALANCO } from './modelo.js?v=20261008l';
-import { criarEstampa } from './estampa.js?v=20261008l';
+import { carregarModelo, criarForno, referencia, BALANCO } from './modelo.js?v=20261008m';
+import { criarEstampa } from './estampa.js?v=20261008m';
 
 const MOBILE = Math.min(screen.width, screen.height) < 600;
 const RELEVO = 20;                                // força do alto-relevo dos bordados
