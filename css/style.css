@@ -279,6 +279,8 @@ footer .credito{display:block;margin-top:8px;font-size:12px;color:var(--dim)}
 .pill .reset.visivel{width:38px;min-width:38px;opacity:1;pointer-events:auto}
 /* celular: botões da camisa com área de toque confortável (44 px) */
 @media (pointer:coarse){.pill button{height:44px;min-width:46px}.pill .reset.visivel{width:46px;min-width:46px}}
+/* celular: zoom é na pinça, sem os botões − e +; só fica o "voltar à visão inicial", e só quando aparece */
+@media (pointer:coarse){.pill [data-zoom]{display:none}.pill.zoom:not(:has(.reset.visivel)){display:none}}
 /* toque na estrela: um giro de 360° */
 @keyframes giroEstrela{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 .gira .estrela{animation:giroEstrela .6s cubic-bezier(.3,.9,.4,1)}
