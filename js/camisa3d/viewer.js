@@ -7,8 +7,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.min.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.min.js';
-import { carregarModelo, criarForno, referencia, BALANCO } from './modelo.js?v=20261008n';
-import { criarEstampa } from './estampa.js?v=20261008n';
+import { carregarModelo, criarForno, referencia, BALANCO } from './modelo.js?v=20261008o';
+import { criarEstampa } from './estampa.js?v=20261008o';
 
 const MOBILE = Math.min(screen.width, screen.height) < 600;
 const RELEVO = 20;                                // força do alto-relevo dos bordados
@@ -158,7 +158,9 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
   function setText(nome, numero) { if (nome !== texto.nome || numero !== texto.numero) atencao(); versaoArte++; frenteMudou ||= numero !== texto.numero; texto = { nome, numero }; pedirDesenho(false); }
   /* ---------- controles ---------- */
   const controls = new OrbitControls(camera, canvas);
-  canvas.style.touchAction = 'pan-y';                          // deixa rolar a página no celular
+  // celular: o dedo dentro da caixa da camisa mexe só a camisa (girar, pinça); a página rola arrastando por fora
+  canvas.style.touchAction = 'none';
+  canvas.closest('.viewer').style.touchAction = 'none';
   Object.assign(controls, {
     enableDamping: true, dampingFactor: .07, rotateSpeed: .85,
     enablePan: false, enableZoom: false, autoRotate: false, autoRotateSpeed: 0,
