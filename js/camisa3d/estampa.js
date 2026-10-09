@@ -127,6 +127,30 @@ function partesEscudo(im) {
   return (im._partes = { corpo: parte(false), estrelas: parte(true), baseEstrelas });
 }
 
+/* medidas da tinta de um texto, feitas desenhando-o numa tela invisível e lendo os pixels.
+   Substituem measureText().actualBoundingBox*: o Safari do iPhone devolve o lado esquerdo da tinta
+   errado, o que deslocava cada dígito e abria espaço a mais entre eles. Mesmo formato do TextMetrics
+   (left = quanto a tinta começa à esquerda do ponto de origem; positivo se passar dele) */
+const tintaCache = new Map();
+function medirTinta(fonte, texto) {
+  // a fonte pode carregar depois do 1º desenho: medida feita com a fonte provisória não vale depois
+  const chave = fonte + "|" + texto + "|" + (document.fonts && document.fonts.check(fonte) ? 1 : 0);
+  if (tintaCache.has(chave)) return tintaCache.get(chave);
+  const px = parseFloat((fonte.match(/(d+(?:.d+)?)px/) || [0, 100])[1]);
+  const c = document.createElement("canvas"), W = Math.ceil(px * (texto.length + 2)), H = Math.ceil(px * 2.2), ox = Math.ceil(px), base = Math.ceil(px * 1.5);
+  c.width = W; c.height = H;
+  const g = c.getContext("2d", { willReadFrequently: true });
+  g.font = fonte; g.textBaseline = "alphabetic"; g.textAlign = "left"; g.fillStyle = "#000";
+  g.fillText(texto, ox, base);
+  const d = g.getImageData(0, 0, W, H).data;
+  let x0 = W, x1 = -1, y0 = H, y1 = -1;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (d[(y * W + x) * 4 + 3] > 96) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  const m = x1 < 0 ? { actualBoundingBoxLeft: 0, actualBoundingBoxRight: 0, actualBoundingBoxAscent: 0, actualBoundingBoxDescent: 0 }
+    : { actualBoundingBoxLeft: ox - x0, actualBoundingBoxRight: x1 + 1 - ox, actualBoundingBoxAscent: base - y0, actualBoundingBoxDescent: y1 + 1 - base };
+  tintaCache.set(chave, m);
+  return m;
+}
+
 export function criarEstampa(resolucao = 1024) {
   const tela = () => document.createElement('canvas');
   // relevo: mapa de altura da frente (bordados), em tons de cinza; brilho: rugosidade da frente
@@ -167,8 +191,8 @@ export function criarEstampa(resolucao = 1024) {
       const N = DESIGN.costas.nome, e = ext.escalaReal || 1, g = gC;
       const alt = N.altReal * e, larg = N.largReal * e, esp = N.espacoReal * e;
       g.letterSpacing = '0px'; g.font = `700 100px ${FONTE_NOME}`;
-      const cap = g.measureText('H').actualBoundingBoxAscent, fs = 100 * alt / cap;      // fonte em m para a altura pedida
-      const caixa = c => { const m = g.measureText(c); return { esq: m.actualBoundingBoxLeft * fs / 100, larg: (m.actualBoundingBoxLeft + m.actualBoundingBoxRight) * fs / 100 }; };
+      const cap = medirTinta(g.font, 'H').actualBoundingBoxAscent, fs = 100 * alt / cap;      // fonte em m para a altura pedida
+      const caixa = c => { const m = medirTinta(g.font, c); return { esq: m.actualBoundingBoxLeft * fs / 100, larg: (m.actualBoundingBoxLeft + m.actualBoundingBoxRight) * fs / 100 }; };
       const letras = [...str].map(c => (c === ' ' ? null : { c, ...caixa(c) }));
       // largura padrão: a de uma letra típica (mediana do alfabeto) passa a medir "larg"
       const ref = [...'ABCDEGHKNOPRSUVXYZ'].map(c => caixa(c).larg).sort((a, b) => a - b)[9];
@@ -197,9 +221,9 @@ export function criarEstampa(resolucao = 1024) {
       const alt = fundo !== undefined ? topo - fundo : N.altReal * e, prop = alt / N.altReal;   // prop: real → modelo
       const borda = N.bordaReal * prop;
       g.letterSpacing = '0px'; g.font = `700 100px ${FONTE_NUM_COSTAS}`;
-      const m0 = g.measureText('0'), sy = alt / (m0.actualBoundingBoxAscent + m0.actualBoundingBoxDescent);
+      const m0 = medirTinta(g.font, '0'), sy = alt / (m0.actualBoundingBoxAscent + m0.actualBoundingBoxDescent);
       let sx = N.largReal * prop / (m0.actualBoundingBoxLeft + m0.actualBoundingBoxRight), gap = N.espacoReal * prop;
-      const dig = [...str].map(c => { const m = g.measureText(c); return { c, esq: m.actualBoundingBoxLeft, larg: m.actualBoundingBoxLeft + m.actualBoundingBoxRight, sobe: m.actualBoundingBoxAscent }; });
+      const dig = [...str].map(c => { const m = medirTinta(g.font, c); return { c, esq: m.actualBoundingBoxLeft, larg: m.actualBoundingBoxLeft + m.actualBoundingBoxRight, sobe: m.actualBoundingBoxAscent }; });
       const total = () => dig.reduce((s, d) => s + d.larg * sx, 0) + gap * (dig.length - 1);
       // não cabe: primeiro aproxima os caracteres (até o espaço mínimo), depois estreita todos por igual
       const largMax = N.largMaxReal * prop;
@@ -312,9 +336,9 @@ export function criarEstampa(resolucao = 1024) {
       // largura pela tinta do número (não pelo espaço da fonte), centralizado por ela
       gF.letterSpacing = '0px'; gF.font = `700 ${F.numero.alt * k / .72}px ${FONTE_NUM}`;
       // dígitos estreitos na mesma proporção do número das costas (9,4 × 24,85 cm reais)
-      const m0 = gF.measureText('0'), N = DESIGN.costas.numero;
+      const m0 = medirTinta(gF.font, '0'), N = DESIGN.costas.numero;
       const sx = (N.largReal / N.altReal) / ((m0.actualBoundingBoxLeft + m0.actualBoundingBoxRight) / (m0.actualBoundingBoxAscent + m0.actualBoundingBoxDescent));
-      const m = gF.measureText(num), tinta = (m.actualBoundingBoxLeft + m.actualBoundingBoxRight) * sx / k;
+      const m = medirTinta(gF.font, num), tinta = (m.actualBoundingBoxLeft + m.actualBoundingBoxRight) * sx / k;
       // o quadro passa 2 mm para dentro das brancas de cima e de baixo: cobre a transição suavizada das
       // listras e funde com o tecido (sem a linha fina fechando o quadrado)
       quadro('frente', 0, yN, tinta + 2 * F.numero.margemReal * (ext.escalaReal || 1), lN.topo - lN.baixo + .004);
