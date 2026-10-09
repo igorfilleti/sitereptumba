@@ -60,7 +60,7 @@ const Shirt = (() => {
     console.error('Camisa 3D:', err);
     msg.textContent = 'Não foi possível abrir a visualização 3D, mas você pode continuar o pedido normalmente.';
   };
-  import('./camisa3d/viewer.js?v=20261008o')
+  import('./camisa3d/viewer.js?v=20261008p')
     .then(m => {
       real = m.createShirt($('#shirt3d'), { onPronto: () => { msg.hidden = true; }, onErro: falhou });
       for (const [k, a] of Object.entries(fila)) real[k](...a);
@@ -226,7 +226,7 @@ $$('.esp').forEach(e => e.addEventListener('pointerdown', ev => { ev.preventDefa
   const ids = ['camisaNome', 'camisaNumero'];
   const celular = () => matchMedia('(max-width:860px)').matches;
   const espaco = document.createElement('div');                // segura o lugar da camisa na página
-  let ativo = false, quadro = 0, alturaSemTeclado = 0;
+  let ativo = false, quadro = 0, alturaSemTeclado = 0, fimAjuste = 0, rolagemBase = 0;
   const acompanhar = () => {
     if (!ativo || quadro) return;
     quadro = requestAnimationFrame(() => { quadro = 0; raiz.style.setProperty('--ed-topo', (vv ? vv.offsetTop : 0) + 'px'); });
@@ -245,6 +245,8 @@ $$('.esp').forEach(e => e.addEventListener('pointerdown', ev => { ev.preventDefa
       // um único rolamento: o campo logo abaixo da camisa
       const d = e.target.getBoundingClientRect().top - (camisaAlt + 110);   // abaixo da camisa e do espelho dos campos
       if (Math.abs(d) > 2) window.scrollTo({ top: scrollY + d, behavior: 'instant' });
+      // a rolagem que o próprio site (e o teclado abrindo) fazem agora não conta como a pessoa rolando
+      fimAjuste = performance.now() + 700; rolagemBase = scrollY;
     }
     espelhar();
   }
@@ -265,6 +267,12 @@ $$('.esp').forEach(e => e.addEventListener('pointerdown', ev => { ev.preventDefa
   // o modo edição só existe na área 2 e com o teclado aberto. No iPhone, fechar o teclado (OK ou rolar a
   // página) deixa o campo selecionado sem teclado: aí, ou quando a área 2 sai da tela, ele termina sozinho
   const encerrar = () => { if (!ativo) return; const a = document.activeElement; if (a && ids.includes(a.id)) a.blur(); sair(); };
+  // a pessoa rolou a página (mais que um tremidinho): termina na hora, sem o painel ficar acompanhando a rolagem
+  addEventListener('scroll', () => {
+    if (!ativo) return;
+    if (performance.now() < fimAjuste) { rolagemBase = scrollY; return; }
+    if (Math.abs(scrollY - rolagemBase) > 24) encerrar();
+  }, { passive: true });
   // (a personalização precisa ocupar a faixa do meio da tela; uma pontinha dela no alto ou no pé não conta)
   new IntersectionObserver(es => { if (!es[0].isIntersecting) encerrar(); }, { rootMargin: '-40% 0px -40% 0px' }).observe($('.custom'));
   if (vv) {

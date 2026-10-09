@@ -7,8 +7,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.min.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.min.js';
-import { carregarModelo, criarForno, referencia, BALANCO } from './modelo.js?v=20261008o';
-import { criarEstampa } from './estampa.js?v=20261008o';
+import { carregarModelo, criarForno, referencia, BALANCO } from './modelo.js?v=20261008p';
+import { criarEstampa } from './estampa.js?v=20261008p';
 
 const MOBILE = Math.min(screen.width, screen.height) < 600;
 const RELEVO = 20;                                // força do alto-relevo dos bordados
@@ -253,6 +253,7 @@ export function createShirt(canvas, { onPronto = () => {}, onErro = () => {} } =
     const meiaAlt = modelo.ext.L / 2 * 1.22, meiaLarg = modelo.ext.X * 1.18;
     distBase = Math.max(meiaAlt / t, meiaLarg / (t * camera.aspect)) + .15;
     sujo = true;
+    renderer.render(scene, camera);   // redesenha já: mudar o tamanho apaga a tela e esperar o próximo quadro dá uma piscada
   }
   new ResizeObserver(ajustarCamera).observe(canvas);
 
