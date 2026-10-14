@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="novo">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -10,23 +10,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Goldman&family=Rajdhani:wght@700&family=Saira+Condensed:wght@600;700&family=Saira+Extra+Condensed:wght@900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20261014a">
-<script>
-/* protótipo de design: ?design=novo ("Dia de Jogo"); a escolha fica nesta aba. ?design=atual volta ao normal */
-(function () { try {
-  var PELES = {
-    novo: ['https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Anton&display=swap', 'css/novo.css?v=3']
-  };
-  var q = new URLSearchParams(location.search).get("design");
-  if (q && PELES[q]) sessionStorage.setItem("design", q);
-  if (q === "atual") sessionStorage.removeItem("design");
-  var d = sessionStorage.getItem("design");
-  if (PELES[d]) {
-    document.documentElement.classList.add(d);
-    document.write('<link rel="stylesheet" href="' + PELES[d][0] + '"><link rel="stylesheet" href="' + PELES[d][1] + '">');
-  }
-} catch (e) {} })();
-</script>
+<link rel="stylesheet" href="css/style.css?v=20261014b">
+<!-- design "Dia de Jogo": tudo em css/novo.css, sob html.novo -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Anton&display=swap">
+<link rel="stylesheet" href="css/novo.css?v=4">
 <script type="importmap">
 { "imports": {
   "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.min.js",
@@ -262,7 +249,7 @@
   </div>
 </dialog>
 
-<script src="js/vendor/qrcode.js?v=20261014a" defer></script>
-<script type="module" src="js/app.js?v=20261014a"></script>
+<script src="js/vendor/qrcode.js?v=20261014b" defer></script>
+<script type="module" src="js/app.js?v=20261014b"></script>
 </body>
 </html>
