@@ -160,3 +160,14 @@ html.novo .card .btn:hover{box-shadow:7px 7px 0 var(--tinta)}
 html.novo .card .btn:active{box-shadow:1px 1px 0 var(--tinta)}
 html.novo .done-card .btn{box-shadow:5px 5px 0 var(--tinta)}
 html.novo .done-card .btn:hover{box-shadow:7px 7px 0 var(--tinta)}
+
+/* toque limpo no celular: sem "mouse em cima" preso; o botão só afunda enquanto o dedo está nele */
+@media (hover:none){
+  html.novo .btn:hover{background:var(--verm);transform:none;box-shadow:5px 5px 0 var(--papel)}
+  html.novo .card .btn:hover,html.novo .done-card .btn:hover{box-shadow:5px 5px 0 var(--tinta)}
+  html.novo .btn:active{transform:translate(4px,4px);box-shadow:1px 1px 0 var(--papel)}
+  html.novo .card .btn:active,html.novo .done-card .btn:active{box-shadow:1px 1px 0 var(--tinta)}
+  html.novo .btn-ghost:hover{background:transparent;color:var(--tinta)}
+  html.novo .btn-ghost:active{background:var(--tinta);color:var(--papel)}
+  html.novo .card .seg input:not(:checked)+label:hover{color:#5a544a}
+}

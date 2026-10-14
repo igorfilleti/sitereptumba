@@ -10,14 +10,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Goldman&family=Rajdhani:wght@700&family=Saira+Condensed:wght@600;700&family=Saira+Extra+Condensed:wght@900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20261008s">
+<link rel="stylesheet" href="css/style.css?v=20261014a">
 <script>
-/* protótipos de design: ?design=novo ("Dia de Jogo") ou ?design=fanzine ("Lambe-Lambe"); a escolha
-   fica nesta aba. ?design=atual volta ao normal */
+/* protótipo de design: ?design=novo ("Dia de Jogo"); a escolha fica nesta aba. ?design=atual volta ao normal */
 (function () { try {
   var PELES = {
-    novo: ['https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Anton&display=swap', 'css/novo.css?v=2'],
-    fanzine: ['https://fonts.googleapis.com/css2?family=Anton&family=Permanent+Marker&family=Courier+Prime:wght@400;700&display=swap', 'css/fanzine.css?v=1']
+    novo: ['https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Anton&display=swap', 'css/novo.css?v=3']
   };
   var q = new URLSearchParams(location.search).get("design");
   if (q && PELES[q]) sessionStorage.setItem("design", q);
@@ -264,7 +262,7 @@
   </div>
 </dialog>
 
-<script src="js/vendor/qrcode.js?v=20261008s" defer></script>
-<script type="module" src="js/app.js?v=20261008s"></script>
+<script src="js/vendor/qrcode.js?v=20261014a" defer></script>
+<script type="module" src="js/app.js?v=20261014a"></script>
 </body>
 </html>
