@@ -171,3 +171,4 @@ html.novo .done-card .btn:hover{box-shadow:7px 7px 0 var(--tinta)}
   html.novo .btn-ghost:active{background:var(--tinta);color:var(--papel)}
   html.novo .card .seg input:not(:checked)+label:hover{color:#5a544a}
 }
+html.novo .hero h1 .pal{color:var(--papel)}html.novo .hero h1 .pal.alt{color:var(--verm)}
