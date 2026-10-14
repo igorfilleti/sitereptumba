@@ -1,0 +1,162 @@
+/* =====================================================================
+   PROTÓTIPO "DIA DE JOGO" (só com ?design=novo; tudo dentro de html.novo)
+   Papel impresso de futebol: ingresso, programa da partida, cupom. Cartões creme com sombra
+   carimbada, botões que afundam, faixas de listras da camisa, telão para o 3D.
+   ===================================================================== */
+html.novo{
+  --tinta:#0e0d0c; --papel:#efe7d6; --papel-2:#e4dac4; --verm:#d7141e; --verm-2:#b80f18;
+  --anton:"Anton","Saira Extra Condensed","Arial Narrow",sans-serif;
+  --mono:"Space Mono",ui-monospace,Menlo,Consolas,monospace;
+  --bg:#0e0d0c;
+}
+/* faixa de listras da camisa (vermelho/branco), usada como divisória */
+html.novo{--listras:repeating-linear-gradient(90deg,var(--verm) 0 22px,var(--papel) 22px 44px)}
+
+/* ---------- fundo: sem neon, caveiras + textura de papel ---------- */
+html.novo .bg{background:#0e0d0c}
+html.novo .bg i{display:none}
+html.novo .bg::after{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+/* ---------- topo: barra preta com a faixa de listras embaixo ---------- */
+html.novo .top{background:var(--tinta);backdrop-filter:none;-webkit-backdrop-filter:none;border-bottom:0}
+html.novo .top::after{content:"";position:absolute;left:0;right:0;bottom:-6px;height:6px;background:var(--listras)}
+html.novo .brand{font-family:var(--anton);font-size:20px;letter-spacing:.06em}
+
+/* ---------- hero: tipografia de cartaz, carimbo e ingresso ---------- */
+html.novo .hero{padding-top:84px}
+html.novo .hero-copy{position:relative}
+html.novo .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.22em;color:var(--papel)}
+html.novo .hero h1{font-family:var(--anton);font-weight:400;line-height:.9;letter-spacing:.005em;color:var(--papel)}
+html.novo .hero h1 em{color:var(--verm);-webkit-text-stroke:0;text-shadow:none;display:inline}
+/* carimbo "temporada 2026" */
+html.novo .hero-copy::before{content:"TEMPORADA 2026 \2605  LIMEIRA";position:absolute;right:0;top:-46px;padding:8px 12px;border:2px solid var(--verm);
+  color:var(--verm);font:700 11px/1 var(--mono);letter-spacing:.18em;transform:rotate(4deg);opacity:.9}
+html.novo .lead{color:#cfc6b4;font-size:17px}
+/* preço como canhoto de ingresso */
+html.novo .price-tag{position:relative;padding:10px 18px 10px 22px;background:var(--papel);color:var(--tinta);font-family:var(--anton);font-size:24px;letter-spacing:.03em;
+  -webkit-mask:radial-gradient(circle 7px at 0 50%,#0000 98%,#000) ;mask:radial-gradient(circle 7px at 0 50%,#0000 98%,#000)}
+html.novo .price-tag small{font:700 11px/1.4 var(--mono);letter-spacing:.04em;color:#5c564b}
+html.novo .scroll-cue{font-family:var(--mono);font-size:11px;color:#8b8478}
+html.novo .scroll-cue::before{background:var(--listras);height:6px}
+html.novo .stripes{border-radius:6px;box-shadow:14px 14px 0 #000}
+html.novo .stripes::after{background:linear-gradient(115deg,rgba(0,0,0,.35),transparent 50%)}
+html.novo .hero-crest{filter:drop-shadow(10px 10px 0 rgba(0,0,0,.85))}
+
+/* ---------- botões: blocos com sombra carimbada que afundam ---------- */
+html.novo .btn{clip-path:none;border-radius:3px;filter:none;background:var(--verm);font-family:var(--anton);font-size:18px;letter-spacing:.08em;
+  box-shadow:5px 5px 0 var(--papel);transition:transform .12s,box-shadow .12s,background .15s}
+html.novo .btn:hover{background:var(--verm-2);transform:translate(-2px,-2px);box-shadow:7px 7px 0 var(--papel)}
+html.novo .btn:active{transform:translate(4px,4px);box-shadow:1px 1px 0 var(--papel)}
+html.novo .btn-ghost{border-radius:3px;border:2px solid var(--tinta);color:var(--tinta);font-family:var(--mono);font-weight:700;font-size:12px}
+html.novo .btn-ghost:hover{background:var(--tinta);color:var(--papel)}
+
+/* ---------- títulos das etapas: cartaz ---------- */
+html.novo .sec-head{align-items:center}
+html.novo .sec-head h2{font-family:var(--anton);font-size:clamp(34px,5vw,54px);line-height:.95;letter-spacing:.01em;color:var(--papel)}
+html.novo .sec-head h2::after{content:"";display:block;width:64px;height:6px;margin-top:10px;background:var(--listras)}
+html.novo .sec-head p{color:#a9a090;font-size:15px}
+
+/* ---------- cartões: papel impresso ---------- */
+html.novo .card{
+  --text:var(--tinta); --muted:#5a544a; --dim:#7a7365; --line:rgba(14,13,12,.14); --line-2:rgba(14,13,12,.85); --field:#fffdf8;
+  background:var(--papel);color:var(--tinta);border:0;border-radius:4px;backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:9px 9px 0 #000}
+html.novo .card .field>label,html.novo .card .field>legend,html.novo .card .label{color:var(--tinta);font-family:var(--mono);font-size:11px;letter-spacing:.14em}
+html.novo .card input[type=text],html.novo .card input[type=tel],html.novo .card input[type=email]{border:2px solid var(--tinta);border-radius:3px;background:#fffdf8;color:var(--tinta)}
+html.novo .card input::placeholder{color:#a69f90}
+html.novo .card input:focus{border-color:var(--verm);box-shadow:4px 4px 0 var(--verm)}
+html.novo .card .count{color:#7a7365;font-family:var(--mono);font-size:11px}
+
+/* opções (modelagem, pagamento) e tamanhos */
+html.novo .card .seg{border:2px solid var(--tinta);border-radius:3px;background:#fffdf8;padding:4px}
+html.novo .card .seg label{border-radius:2px;color:#5a544a;font-family:var(--anton);font-weight:400;font-size:17px;letter-spacing:.08em}
+html.novo .card .seg input:checked+label{background:var(--tinta);color:var(--papel);box-shadow:none}
+@media (hover:hover){html.novo .card .seg input:not(:checked)+label:hover{box-shadow:inset 0 0 0 2px var(--verm);color:var(--tinta)}}
+html.novo .card .sizes label{border:2px solid var(--tinta);border-radius:3px;background:#fffdf8;color:var(--tinta)}
+html.novo .card .sizes label b{font-family:var(--anton);font-size:20px}
+html.novo .card .sizes input:checked+label{background:var(--verm);border-color:var(--verm);color:#fff;transform:translate(-2px,-2px);box-shadow:4px 4px 0 var(--tinta)}
+html.novo .card .sizes input:checked+label small{color:#fff}
+html.novo .card .measures div{border:2px dashed rgba(14,13,12,.35);border-radius:3px;background:transparent}
+html.novo .card .measures span{font-family:var(--mono);font-size:10px}
+html.novo .card .measures strong{font-family:var(--anton);font-size:24px}
+html.novo .card details.table{border:2px solid var(--tinta);border-radius:3px}
+html.novo .card details.table summary{color:var(--tinta);font-family:var(--mono);font-size:12px}
+html.novo .card details.table summary::after{color:var(--verm)}
+html.novo .card details.table tr.sel td{background:var(--verm);color:#fff}
+
+/* ---------- telão da camisa 3D ---------- */
+html.novo .viewer{border:3px solid #000;border-radius:4px;box-shadow:9px 9px 0 var(--verm);
+  background:radial-gradient(70% 60% at 50% 45%,#2a2622,transparent 75%),#141210}
+html.novo .viewer::before{background:repeating-linear-gradient(0deg,rgba(255,255,255,.025) 0 1px,transparent 1px 3px)}   /* linhas de telão */
+html.novo .viewer::after{content:"\25CF  AO VIVO";position:absolute;left:12px;top:12px;padding:5px 8px;background:var(--verm);color:#fff;font:700 10px/1 var(--mono);letter-spacing:.16em;pointer-events:none}
+html.novo .hint{left:auto;right:12px;top:auto;bottom:56px;font-family:var(--mono);font-size:10px}
+html.novo .badge{border-radius:2px;background:var(--papel);color:var(--tinta);border:0;font-family:var(--anton);font-weight:400;letter-spacing:.06em}
+html.novo .badge b{color:var(--verm)}
+html.novo .pill{border-radius:3px;background:rgba(14,13,12,.8);border:1px solid rgba(239,231,214,.25)}
+html.novo .pill button{border-radius:2px;font-family:var(--mono);font-size:11px}
+html.novo .pill button.on{background:var(--papel);color:var(--tinta)}
+html.novo body.editando .viewer-col{background:linear-gradient(180deg,rgba(14,13,12,.97) 70%,rgba(14,13,12,0))}
+html.novo .esp{border-radius:3px}
+
+/* ---------- pagamento: ingresso com recortes e cupom ---------- */
+html.novo .card.pix,html.novo .card.finish{
+  -webkit-mask:radial-gradient(circle 13px at 0 58%,#0000 97%,#000) left/51% 100% no-repeat,radial-gradient(circle 13px at 100% 58%,#0000 97%,#000) right/51% 100% no-repeat;
+          mask:radial-gradient(circle 13px at 0 58%,#0000 97%,#000) left/51% 100% no-repeat,radial-gradient(circle 13px at 100% 58%,#0000 97%,#000) right/51% 100% no-repeat;
+  box-shadow:none;filter:drop-shadow(9px 9px 0 #000)}
+html.novo .price{font-family:var(--anton);font-size:46px}
+html.novo .pix-brand{font-family:var(--mono);font-size:11px}
+html.novo .pix-nota{border-radius:3px;background:#fff6dc;border:2px dashed #b8902a;color:var(--tinta)}
+html.novo .qr{border-radius:3px;border:3px solid var(--tinta);box-shadow:6px 6px 0 var(--verm)}
+html.novo .copy{border:2px solid var(--tinta);border-radius:3px;background:#fffdf8}
+html.novo .copy code{font-family:var(--mono);color:var(--tinta)}
+html.novo .drop{border:2px dashed var(--tinta);border-radius:3px;background:rgba(255,255,255,.4)}
+html.novo .drop-empty svg{color:var(--verm)}
+html.novo .drop-empty b{font-family:var(--anton);font-weight:400;font-size:20px}
+/* resumo como cupom fiscal */
+html.novo .summary{border:0;border-radius:0;background:#fffdf8;font-family:var(--mono);box-shadow:0 1px 0 rgba(0,0,0,.08);
+  -webkit-mask:linear-gradient(#000 0 0) top/100% calc(100% - 8px) no-repeat,conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/16px 8px repeat-x;
+          mask:linear-gradient(#000 0 0) top/100% calc(100% - 8px) no-repeat,conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/16px 8px repeat-x;
+  padding-bottom:8px}
+html.novo .summary h3{background:var(--tinta);color:var(--papel);font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-align:center}
+html.novo .summary dt,html.novo .summary dd{border-top:1px dashed rgba(14,13,12,.3);font-size:13px}
+html.novo .summary dd.total{font-family:var(--anton);font-size:24px;color:var(--verm)}
+html.novo .fine{font-family:var(--mono);font-size:11px}
+html.novo .form-error{border-radius:3px;background:#ffe3e3;border:2px solid var(--verm);color:#7a0a10}
+
+/* ---------- confirmação: ingresso destacado ---------- */
+html.novo .done-card{background:var(--papel);color:var(--tinta);border:0;border-radius:4px;box-shadow:12px 12px 0 #000;
+  --text:var(--tinta); --muted:#5a544a; --line:rgba(14,13,12,.2)}
+html.novo .done-faixa{height:22px;-webkit-mask:none;mask:none;background:var(--listras);animation:none}
+html.novo .done-in{margin-top:0;padding-top:18px}
+html.novo .done-kicker{font-family:var(--mono);color:#5a544a}
+html.novo .done-in h2{font-family:var(--anton);font-size:46px;color:var(--tinta)}
+html.novo .done-in h2 em{color:var(--verm);-webkit-text-stroke:0;text-shadow:none}
+html.novo .done-oi{color:var(--tinta)}
+html.novo .done-camisa{background:var(--tinta);border:0;border-radius:3px;
+  -webkit-mask:radial-gradient(circle 11px at 0 50%,#0000 97%,#000) left/51% 100% no-repeat,radial-gradient(circle 11px at 100% 50%,#0000 97%,#000) right/51% 100% no-repeat;
+          mask:radial-gradient(circle 11px at 0 50%,#0000 97%,#000) left/51% 100% no-repeat,radial-gradient(circle 11px at 100% 50%,#0000 97%,#000) right/51% 100% no-repeat}
+html.novo .done-ficha div{border-bottom-color:rgba(239,231,214,.2)}
+html.novo .done-ficha dt{color:#a9a090;font-family:var(--mono);font-size:10px}
+html.novo .done-ficha dd{color:var(--papel)}
+@media (max-width:420px){html.novo .done-in h2{font-size:38px}}
+
+/* ---------- rodapé ---------- */
+html.novo footer{position:relative;margin-top:30px;border-top:0}
+html.novo footer::before{content:"";position:absolute;left:0;right:0;top:0;height:8px;background:var(--listras)}
+html.novo footer b{font-family:var(--anton);font-weight:400;font-size:18px;letter-spacing:.08em}
+html.novo footer b.ano{color:var(--verm)}
+html.novo footer .credito{font-family:var(--mono);font-size:10px;color:#6f685b}
+
+/* celular */
+@media (max-width:560px){
+  html.novo .hero-copy::before{top:-38px;font-size:10px}
+  html.novo .sec-head h2{font-size:34px}
+  html.novo .card{box-shadow:6px 6px 0 #000}
+  html.novo .btn{font-size:16px}
+}
+@media (max-width:400px){html.novo .btn{font-size:14px;letter-spacing:.05em}}
+/* botão dentro do papel: sombra preta (a creme some no papel) */
+html.novo .card .btn{box-shadow:5px 5px 0 var(--tinta)}
+html.novo .card .btn:hover{box-shadow:7px 7px 0 var(--tinta)}
+html.novo .card .btn:active{box-shadow:1px 1px 0 var(--tinta)}
+html.novo .done-card .btn{box-shadow:5px 5px 0 var(--tinta)}
+html.novo .done-card .btn:hover{box-shadow:7px 7px 0 var(--tinta)}

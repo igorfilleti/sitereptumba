@@ -11,6 +11,18 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Goldman&family=Rajdhani:wght@700&family=Saira+Condensed:wght@600;700&family=Saira+Extra+Condensed:wght@900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css?v=20261008s">
+<script>
+/* protótipo de design: ligado com ?design=novo (fica ligado nesta aba); ?design=atual volta ao normal */
+(function () { try {
+  var q = new URLSearchParams(location.search).get("design");
+  if (q === "novo") sessionStorage.setItem("design", "novo");
+  if (q === "atual") sessionStorage.removeItem("design");
+  if (sessionStorage.getItem("design") === "novo") {
+    document.documentElement.classList.add("novo");
+    document.write('<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Anton&display=swap"><link rel="stylesheet" href="css/novo.css?v=1">');
+  }
+} catch (e) {} })();
+</script>
 <script type="importmap">
 { "imports": {
   "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.min.js",
