@@ -60,7 +60,7 @@ const Shirt = (() => {
     console.error('Camisa 3D:', err);
     msg.textContent = 'Não foi possível abrir a visualização 3D, mas você pode continuar o pedido normalmente.';
   };
-  import('./camisa3d/viewer.js?v=20261008s')
+  import('./camisa3d/viewer.js?v=20261014a')
     .then(m => {
       real = m.createShirt($('#shirt3d'), { onPronto: () => { msg.hidden = true; }, onErro: falhou });
       for (const [k, a] of Object.entries(fila)) real[k](...a);
@@ -233,6 +233,9 @@ $$('.esp').forEach(e => e.addEventListener('pointerdown', ev => { ev.preventDefa
   };
   function entrar(e) {
     if (!celular()) return;
+    // trocar de campo também faz o celular rolar sozinho até o novo campo: essa rolagem não conta como a
+    // pessoa rolando (senão o teclado fechava e era preciso tocar de novo)
+    fimAjuste = performance.now() + 800; rolagemBase = scrollY;
     if (!ativo) {
       // tamanho da camisa: cerca de 1/3 da tela, decidido antes de o teclado abrir
       const camisaAlt = Math.round(Math.max(160, Math.min(innerHeight * .3, 270)));

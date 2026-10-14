@@ -349,3 +349,22 @@ dialog.done[open] .done-estrelas::before{animation:haloAcende 1s ease .5s forwar
 /* celulares estreitos: texto dos botões numa linha só (a Goldman é larga) */
 @media (max-width:400px){.btn{padding:0 18px;font-size:13px;letter-spacing:.03em;white-space:nowrap}}
 @media (max-width:340px){.btn{font-size:12px;padding:0 14px}}
+
+/* ---------- toque limpo no celular ----------
+   sem o quadrado cinza do toque, sem a espera do toque duplo (resposta na hora) e sem o efeito de
+   "mouse em cima" preso no botão depois do toque: no celular cada botão responde só ao toque */
+a,button,label,input,summary,.btn,.esp,.sec-num,.steps a{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+@media (hover:none){
+  .btn:hover{background:var(--red)}
+  .btn:hover .arrow{transform:none}
+  .btn:active{background:var(--red-hi);transform:translateY(1px)}
+  .btn-ghost:hover{background:transparent;border-color:var(--line-2)}
+  .btn-ghost:active{background:rgba(255,255,255,.08)}
+  .seg input:not(:checked)+label:hover{color:var(--muted)}
+  .sizes label:hover{border-color:var(--line-2)}
+  .sizes input:not(:checked)+label:active{transform:scale(.96)}
+  .seg input:not(:checked)+label:active{background:rgba(255,255,255,.06)}
+  .pill button:not(.on):hover{color:var(--muted)}
+  .steps a:hover .estrela{stroke:#6b5a2e}
+  .steps a.acesa:hover .estrela{stroke:#ffe48a}
+}
